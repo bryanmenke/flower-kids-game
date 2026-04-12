@@ -103,14 +103,25 @@ function gameLoop(timestamp) {
   requestAnimationFrame(gameLoop);
 }
 
+// Auto-save after any state change
+function autoSave() {
+  Storage.save();
+}
+
 // Initialize
 function init() {
   resizeCanvas();
   initStars();
   Planet.init();
-
   Input.init();
+
+  // Try to load saved garden
+  const hasSave = Storage.load();
+
   UI.init();
+  if (hasSave) {
+    UI.refreshGardenTray();
+  }
 
   Input.onTap = (x, y) => {
     GameAudio.init();
@@ -126,6 +137,7 @@ function init() {
     // Check gift stars first
     if (Rewards.handleTap(x, y)) {
       UI.refreshGardenTray();
+      autoSave();
       return;
     }
 
@@ -156,6 +168,7 @@ function init() {
       Particles.emit(pos.x, pos.y, { count: 6, color: '#ffffcc', speed: 25, life: 0.4, size: 2 });
       UI.selectedDecoration = null;
       UI.trayItems.forEach(btn => btn.classList.remove('selected'));
+      autoSave();
       return;
     }
 
@@ -169,12 +182,12 @@ function init() {
       Particles.emit(pos.x, pos.y, { count: 8, color: PlantTypes[typeIndex].color, speed: 30, life: 0.5, size: 3 });
       Plants.selectedType = -1;
       UI.trayItems.forEach(btn => btn.classList.remove('selected'));
+      autoSave();
       return;
     }
   };
 
   Input.onDragStart = (x, y) => {
-    // Check if starting drag on a shooting star
     const starIndex = ShootingStars.hitTest(x, y);
     if (starIndex >= 0) {
       ShootingStars.catchStar(starIndex);
@@ -197,12 +210,12 @@ function init() {
       GameAudio.stopDragShimmer();
       const plant = ShootingStars.releaseDroplet(x, y);
       if (plant) {
-        // Bloom the plant!
         Plants.bloomPlant(plant);
         const pos = Planet.surfacePoint(plant.angle);
         GameAudio.playBloom(plant.typeIndex);
         Particles.emitBloom(pos.x, pos.y, PlantTypes[plant.typeIndex].bloomColors);
         Rewards.onBloom();
+        autoSave();
       }
     }
   };

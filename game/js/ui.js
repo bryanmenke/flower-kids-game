@@ -219,6 +219,7 @@ const UI = {
     this.accessoryTrayItems.forEach(item => {
       item.btn.classList.toggle('selected', this.selectedAnimal && this.selectedAnimal.accessory === item.id);
     });
+    Storage.save();
   },
 
   // Show/hide trays
