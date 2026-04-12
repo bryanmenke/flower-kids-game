@@ -74,6 +74,8 @@ function gameLoop(timestamp) {
   // Clear and draw
   ctx.clearRect(0, 0, Game.width, Game.height);
   drawBackground();
+  Planet.update(Game.deltaTime);
+  Planet.draw(ctx);
 
   requestAnimationFrame(gameLoop);
 }
@@ -82,9 +84,11 @@ function gameLoop(timestamp) {
 function init() {
   resizeCanvas();
   initStars();
+  Planet.init();
   window.addEventListener('resize', () => {
     resizeCanvas();
     initStars();
+    Planet.resize();
   });
   Game.lastTime = performance.now() / 1000;
   requestAnimationFrame(gameLoop);
