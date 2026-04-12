@@ -78,21 +78,27 @@ const Planet = {
   },
 
   drawSurfaceDetails(ctx) {
-    // Draw small earth/brown patches that rotate with the planet
     ctx.save();
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
     ctx.clip();
 
-    const patchCount = 5;
-    for (let i = 0; i < patchCount; i++) {
-      const angle = this.rotation + (i * Math.PI * 2 / patchCount);
-      const px = this.x + Math.cos(angle) * this.radius * 0.5;
+    const patches = [
+      { angleOffset: 0, dist: 0.5, rx: 1.5, ry: 1 },
+      { angleOffset: 1.26, dist: 0.4, rx: 1.3, ry: 0.9 },
+      { angleOffset: 2.51, dist: 0.6, rx: 1.2, ry: 0.8 },
+      { angleOffset: 3.77, dist: 0.3, rx: 1.4, ry: 1.1 },
+      { angleOffset: 5.03, dist: 0.55, rx: 1.1, ry: 0.95 },
+    ];
+
+    for (const patch of patches) {
+      const angle = this.rotation + patch.angleOffset;
+      const px = this.x + Math.cos(angle) * this.radius * patch.dist;
       const py = this.y + Math.sin(angle) * this.radius * 0.3;
-      const patchRadius = this.radius * (0.1 + Math.random() * 0.05);
+      const patchRadius = this.radius * 0.1;
 
       ctx.beginPath();
-      ctx.ellipse(px, py, patchRadius * 1.5, patchRadius, angle, 0, Math.PI * 2);
+      ctx.ellipse(px, py, patchRadius * patch.rx, patchRadius * patch.ry, angle, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(101, 78, 50, 0.3)';
       ctx.fill();
     }

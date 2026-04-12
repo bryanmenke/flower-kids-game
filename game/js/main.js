@@ -11,7 +11,9 @@ const Game = {
   deltaTime: 0,
   lastTime: 0,
   stars: [],
-  state: 'playing', // 'title', 'playing'
+  state: 'title', // 'title', 'transition', 'playing'
+  titleAlpha: 1,
+  transitionTimer: 0,
 };
 
 // Resize canvas to fill screen at device pixel ratio
@@ -43,7 +45,6 @@ function initStars() {
 
 // Draw background gradient and stars
 function drawBackground() {
-  // Deep space gradient
   const grad = ctx.createRadialGradient(
     Game.width / 2, Game.height / 2, 0,
     Game.width / 2, Game.height / 2, Game.height
@@ -53,7 +54,6 @@ function drawBackground() {
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, Game.width, Game.height);
 
-  // Twinkling stars
   for (const star of Game.stars) {
     const twinkle = Math.sin(Game.time * star.twinkleSpeed + star.twinkleOffset);
     const alpha = star.alpha * (0.5 + 0.5 * twinkle);
@@ -64,7 +64,55 @@ function drawBackground() {
   }
 }
 
-// Main game loop
+// Auto-save after any state change
+function autoSave() {
+  Storage.save();
+}
+
+function drawTitleScreen() {
+  // Small planet in center
+  const scale = 0.5;
+  const origRadius = Planet.radius;
+  Planet.radius = origRadius * scale;
+  Planet.y = Game.height * 0.4;
+  Planet.draw(ctx);
+  Planet.radius = origRadius;
+  Planet.y = Game.height * 0.4;
+
+  // Pulsing play button (star shape below planet)
+  const pulse = 0.9 + Math.sin(Game.time * 2) * 0.1;
+  const btnX = Game.width / 2;
+  const btnY = Game.height * 0.65;
+  const btnSize = 40 * pulse;
+
+  // Button glow
+  const glow = ctx.createRadialGradient(btnX, btnY, 0, btnX, btnY, btnSize * 2);
+  glow.addColorStop(0, 'rgba(255, 230, 100, 0.5)');
+  glow.addColorStop(1, 'rgba(255, 230, 100, 0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(btnX, btnY, btnSize * 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Star button
+  ctx.fillStyle = '#ffdd44';
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const outerAngle = (i / 5) * Math.PI * 2 - Math.PI / 2;
+    const innerAngle = outerAngle + Math.PI / 5;
+    ctx.lineTo(btnX + Math.cos(outerAngle) * btnSize, btnY + Math.sin(outerAngle) * btnSize);
+    ctx.lineTo(btnX + Math.cos(innerAngle) * btnSize * 0.45, btnY + Math.sin(innerAngle) * btnSize * 0.45);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  // Inner shine
+  ctx.fillStyle = '#fff8cc';
+  ctx.beginPath();
+  ctx.arc(btnX, btnY, btnSize * 0.25, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 function gameLoop(timestamp) {
   const time = timestamp / 1000;
   Game.deltaTime = Math.min(time - Game.lastTime, 0.1);
@@ -74,6 +122,35 @@ function gameLoop(timestamp) {
   ctx.clearRect(0, 0, Game.width, Game.height);
   drawBackground();
 
+  if (Game.state === 'title') {
+    Planet.update(Game.deltaTime);
+    drawTitleScreen();
+    Particles.update(Game.deltaTime);
+    Particles.draw(ctx);
+    requestAnimationFrame(gameLoop);
+    return;
+  }
+
+  if (Game.state === 'transition') {
+    Game.transitionTimer += Game.deltaTime;
+    const t = Math.min(1, Game.transitionTimer);
+    const ease = 1 - Math.pow(1 - t, 3);
+    Planet.radius = Math.min(Game.width, Game.height) * (0.125 + ease * 0.125);
+    Planet.update(Game.deltaTime);
+    Planet.draw(ctx);
+    Particles.update(Game.deltaTime);
+    Particles.draw(ctx);
+
+    if (t >= 1) {
+      Game.state = 'playing';
+      Planet.resize();
+      UI.init();
+    }
+    requestAnimationFrame(gameLoop);
+    return;
+  }
+
+  // Playing state
   ShootingStars.update(Game.deltaTime);
   Planet.update(Game.deltaTime);
   Animals.update(Game.deltaTime);
@@ -103,28 +180,32 @@ function gameLoop(timestamp) {
   requestAnimationFrame(gameLoop);
 }
 
-// Auto-save after any state change
-function autoSave() {
-  Storage.save();
-}
-
-// Initialize
 function init() {
   resizeCanvas();
   initStars();
   Planet.init();
   Input.init();
 
-  // Try to load saved garden
-  const hasSave = Storage.load();
-
-  UI.init();
-  if (hasSave) {
+  // Check for saved game
+  if (Storage.hasSave()) {
+    Storage.load();
+    Game.state = 'playing';
+    UI.init();
     UI.refreshGardenTray();
+  } else {
+    Game.state = 'title';
   }
 
   Input.onTap = (x, y) => {
     GameAudio.init();
+
+    if (Game.state === 'title') {
+      Game.state = 'transition';
+      Game.transitionTimer = 0;
+      return;
+    }
+
+    if (Game.state !== 'playing') return;
 
     // If in accessory mode, tapping planet background dismisses it
     if (UI.currentTray === 'accessory') {
@@ -141,7 +222,7 @@ function init() {
       return;
     }
 
-    // Check if tapping a shooting star
+    // Check shooting stars
     const starIndex = ShootingStars.hitTest(x, y);
     if (starIndex >= 0) {
       ShootingStars.catchStar(starIndex);
@@ -150,7 +231,7 @@ function init() {
       return;
     }
 
-    // Check if tapping an animal (opens accessory tray)
+    // Check animals
     const animal = Animals.handleTap(x, y);
     if (animal) {
       if (Rewards.getUnlockedByType('accessory').length > 0) {
@@ -159,7 +240,7 @@ function init() {
       return;
     }
 
-    // If a decoration is selected and tap is on planet, place it
+    // Place decoration
     if (UI.selectedDecoration && Planet.hitTest(x, y)) {
       const angle = Planet.screenToSurfaceAngle(x, y);
       Decorations.placeDecoration(UI.selectedDecoration, angle);
@@ -172,7 +253,7 @@ function init() {
       return;
     }
 
-    // If a plant type is selected and tap is on planet, place it
+    // Place plant
     if (Plants.selectedType >= 0 && Planet.hitTest(x, y)) {
       const typeIndex = Plants.selectedType;
       const angle = Planet.screenToSurfaceAngle(x, y);
@@ -188,6 +269,7 @@ function init() {
   };
 
   Input.onDragStart = (x, y) => {
+    if (Game.state !== 'playing') return;
     const starIndex = ShootingStars.hitTest(x, y);
     if (starIndex >= 0) {
       ShootingStars.catchStar(starIndex);
@@ -198,6 +280,7 @@ function init() {
   };
 
   Input.onDragMove = (x, y, dx, dy) => {
+    if (Game.state !== 'playing') return;
     if (ShootingStars.isDraggingDroplet) {
       ShootingStars.moveDroplet(x, y);
     } else if (Planet.hitTest(x, y)) {
@@ -206,6 +289,7 @@ function init() {
   };
 
   Input.onDragEnd = (x, y, velX, velY) => {
+    if (Game.state !== 'playing') return;
     if (ShootingStars.isDraggingDroplet) {
       GameAudio.stopDragShimmer();
       const plant = ShootingStars.releaseDroplet(x, y);
@@ -221,6 +305,7 @@ function init() {
   };
 
   Input.onSwipe = (velX, velY) => {
+    if (Game.state !== 'playing') return;
     if (!ShootingStars.isDraggingDroplet) {
       GameAudio.ensure();
       Planet.spin(velX);

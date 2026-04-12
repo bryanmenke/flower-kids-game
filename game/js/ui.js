@@ -14,6 +14,7 @@ const UI = {
   init() {
     this.createGardenTray();
     this.createAccessoryTray();
+    this.createResetButton();
   },
 
   createGardenTray() {
@@ -230,5 +231,33 @@ const UI = {
 
   hideGardenTray() {
     if (this.trayElement) this.trayElement.style.display = 'none';
+  },
+
+  createResetButton() {
+    const btn = document.createElement('div');
+    btn.id = 'reset-btn';
+    btn.style.cssText = 'position:absolute;top:8px;right:8px;width:30px;height:30px;opacity:0.05;z-index:100;';
+
+    let pressTimer = null;
+    const startPress = (e) => {
+      e.preventDefault();
+      pressTimer = setTimeout(() => {
+        if (confirm('Reset garden? This cannot be undone.')) {
+          Storage.clearSave();
+          window.location.reload();
+        }
+      }, 2000);
+    };
+    const endPress = () => {
+      clearTimeout(pressTimer);
+    };
+
+    btn.addEventListener('touchstart', startPress);
+    btn.addEventListener('mousedown', startPress);
+    btn.addEventListener('touchend', endPress);
+    btn.addEventListener('mouseup', endPress);
+    btn.addEventListener('touchcancel', endPress);
+
+    document.getElementById('ui-overlay').appendChild(btn);
   },
 };
