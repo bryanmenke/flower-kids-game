@@ -76,6 +76,8 @@ function gameLoop(timestamp) {
   drawBackground();
   Planet.update(Game.deltaTime);
   Planet.draw(ctx);
+  Plants.drawPlacementHints(ctx);
+  Plants.draw(ctx);
 
   requestAnimationFrame(gameLoop);
 }
@@ -87,8 +89,8 @@ function init() {
   Planet.init();
 
   Input.init();
+  UI.init();
 
-  // Swipe/drag to spin planet
   Input.onDragMove = (x, y, dx, dy) => {
     if (Planet.hitTest(x, y)) {
       Planet.rotationVelocity = dx * 0.01;
@@ -103,7 +105,15 @@ function init() {
 
   Input.onTap = (x, y) => {
     GameAudio.init();
-    console.log('Tap at', x, y, 'on planet:', Planet.hitTest(x, y));
+
+    // If a plant type is selected and tap is on planet, place it
+    if (Plants.selectedType >= 0 && Planet.hitTest(x, y)) {
+      const angle = Planet.screenToSurfaceAngle(x, y);
+      Plants.addPlant(Plants.selectedType, angle);
+      GameAudio.playPlantPop();
+      Plants.selectedType = -1;
+      UI.trayItems.forEach(btn => btn.classList.remove('selected'));
+    }
   };
 
   window.addEventListener('resize', () => {
