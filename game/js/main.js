@@ -77,6 +77,7 @@ function gameLoop(timestamp) {
   ShootingStars.update(Game.deltaTime);
   Planet.update(Game.deltaTime);
   Animals.update(Game.deltaTime);
+  Rewards.update(Game.deltaTime);
 
   Planet.draw(ctx);
   Plants.drawPlacementHints(ctx);
@@ -94,6 +95,7 @@ function gameLoop(timestamp) {
   }
 
   ShootingStars.draw(ctx);
+  Rewards.draw(ctx);
   Particles.update(Game.deltaTime);
   Particles.draw(ctx);
 
@@ -111,6 +113,9 @@ function init() {
 
   Input.onTap = (x, y) => {
     GameAudio.init();
+
+    // Check gift stars first
+    if (Rewards.handleTap(x, y)) return;
 
     // Check if tapping a shooting star
     const starIndex = ShootingStars.hitTest(x, y);
@@ -174,6 +179,7 @@ function init() {
         const pos = Planet.surfacePoint(plant.angle);
         GameAudio.playBloom(plant.typeIndex);
         Particles.emitBloom(pos.x, pos.y, PlantTypes[plant.typeIndex].bloomColors);
+        Rewards.onBloom();
       }
     }
   };
