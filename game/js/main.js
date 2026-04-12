@@ -71,13 +71,26 @@ function gameLoop(timestamp) {
   Game.lastTime = time;
   Game.time = time;
 
-  // Clear and draw
   ctx.clearRect(0, 0, Game.width, Game.height);
   drawBackground();
+
   Planet.update(Game.deltaTime);
   Planet.draw(ctx);
   Plants.drawPlacementHints(ctx);
   Plants.draw(ctx);
+
+  // Ambient particles around bloomed plants
+  for (const plant of Plants.items) {
+    if (plant.state === 'bloomed') {
+      const pos = Planet.surfacePoint(plant.angle);
+      if (pos.visible) {
+        Particles.emitAmbient(pos.x, pos.y, PlantTypes[plant.typeIndex].glowColor);
+      }
+    }
+  }
+
+  Particles.update(Game.deltaTime);
+  Particles.draw(ctx);
 
   requestAnimationFrame(gameLoop);
 }
@@ -106,11 +119,13 @@ function init() {
   Input.onTap = (x, y) => {
     GameAudio.init();
 
-    // If a plant type is selected and tap is on planet, place it
     if (Plants.selectedType >= 0 && Planet.hitTest(x, y)) {
+      const typeIndex = Plants.selectedType;
       const angle = Planet.screenToSurfaceAngle(x, y);
-      Plants.addPlant(Plants.selectedType, angle);
+      Plants.addPlant(typeIndex, angle);
       GameAudio.playPlantPop();
+      const pos = Planet.surfacePoint(angle);
+      Particles.emit(pos.x, pos.y, { count: 8, color: PlantTypes[typeIndex].color, speed: 30, life: 0.5, size: 3 });
       Plants.selectedType = -1;
       UI.trayItems.forEach(btn => btn.classList.remove('selected'));
     }
