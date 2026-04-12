@@ -166,6 +166,8 @@ const GameAudio = {
       [659, 830, 988],
       [698, 880, 1047],
       [784, 988, 1175],
+      [440, 554, 659, 880],    // Rainbow Tree: rich A major spread
+      [392, 523, 659, 784],    // Firework Flower: warm G to C fanfare
     ];
     const freqs = baseFreqs[plantType % baseFreqs.length];
 

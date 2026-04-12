@@ -106,6 +106,64 @@ const PlantTypes = [
       ctx.fill();
     },
   },
+  // --- Rare seed plants (unlocked via gift star rewards) ---
+  {
+    id: 'rainbowTree',
+    name: 'Rainbow Tree',
+    color: '#ff6666',
+    glowColor: 'rgba(255, 150, 100, 0.5)',
+    bloomColors: ['#ff6666', '#ffaa44', '#ffdd44', '#88ee88', '#66bbff', '#cc77ff'],
+    seedId: 'rainbowTree', // matches RewardPool item id
+    icon: (ctx, x, y, size) => {
+      // Rainbow trunk
+      ctx.fillStyle = '#cc8844';
+      ctx.fillRect(x - size * 0.07, y + size * 0.05, size * 0.14, size * 0.35);
+      // Rainbow layered canopy
+      const colors = ['#ff6666', '#ffaa44', '#ffdd44', '#88ee88', '#66bbff', '#cc77ff'];
+      for (let i = colors.length - 1; i >= 0; i--) {
+        ctx.fillStyle = colors[i];
+        ctx.beginPath();
+        const r = size * (0.38 - i * 0.03);
+        const yOff = y - size * 0.15 - i * size * 0.04;
+        ctx.arc(x, yOff, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    },
+  },
+  {
+    id: 'fireworkFlower',
+    name: 'Firework Flower',
+    color: '#ffaa44',
+    glowColor: 'rgba(255, 170, 68, 0.5)',
+    bloomColors: ['#ff4444', '#ff8833', '#ffaa44', '#ffdd66', '#ffffff'],
+    seedId: 'fireworkFlower', // matches RewardPool item id
+    icon: (ctx, x, y, size) => {
+      // Stem
+      ctx.strokeStyle = '#66aa44';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, y + size * 0.35);
+      ctx.lineTo(x, y - size * 0.05);
+      ctx.stroke();
+      // Firework burst petals
+      const burstColors = ['#ff4444', '#ff8833', '#ffaa44', '#ffdd66', '#ff4444', '#ff8833', '#ffaa44', '#ffdd66'];
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2 - Math.PI / 2;
+        ctx.strokeStyle = burstColors[i];
+        ctx.lineWidth = size * 0.06;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x + Math.cos(a) * size * 0.08, y - size * 0.15 + Math.sin(a) * size * 0.08);
+        ctx.lineTo(x + Math.cos(a) * size * 0.3, y - size * 0.15 + Math.sin(a) * size * 0.3);
+        ctx.stroke();
+      }
+      // Center
+      ctx.fillStyle = '#ffdd66';
+      ctx.beginPath();
+      ctx.arc(x, y - size * 0.15, size * 0.1, 0, Math.PI * 2);
+      ctx.fill();
+    },
+  },
 ];
 
 const Plants = {

@@ -33,8 +33,9 @@ const UI = {
     this.trayElement.innerHTML = '';
     this.trayItems = [];
 
-    // Plant buttons
+    // Plant buttons (skip rare types unless their seed is unlocked)
     PlantTypes.forEach((type, index) => {
+      if (type.seedId && !Rewards.isUnlocked(type.seedId)) return;
       const btn = document.createElement('div');
       btn.className = 'tray-item';
       btn.dataset.type = 'plant';
