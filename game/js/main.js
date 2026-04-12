@@ -67,7 +67,7 @@ function drawBackground() {
 // Main game loop
 function gameLoop(timestamp) {
   const time = timestamp / 1000;
-  Game.deltaTime = Math.min(time - Game.lastTime, 0.1); // cap at 100ms
+  Game.deltaTime = Math.min(time - Game.lastTime, 0.1);
   Game.lastTime = time;
   Game.time = time;
 
@@ -80,11 +80,12 @@ function gameLoop(timestamp) {
   Rewards.update(Game.deltaTime);
 
   Planet.draw(ctx);
+  Decorations.draw(ctx);
   Plants.drawPlacementHints(ctx);
   Plants.draw(ctx);
   Animals.draw(ctx);
+  Decorations.drawAccessories(ctx);
 
-  // Ambient particles around bloomed plants
   for (const plant of Plants.items) {
     if (plant.state === 'bloomed') {
       const pos = Planet.surfacePoint(plant.angle);
@@ -114,8 +115,19 @@ function init() {
   Input.onTap = (x, y) => {
     GameAudio.init();
 
+    // If in accessory mode, tapping planet background dismisses it
+    if (UI.currentTray === 'accessory') {
+      if (!Animals.handleTap(x, y)) {
+        UI.hideAccessoryTray();
+      }
+      return;
+    }
+
     // Check gift stars first
-    if (Rewards.handleTap(x, y)) return;
+    if (Rewards.handleTap(x, y)) {
+      UI.refreshGardenTray();
+      return;
+    }
 
     // Check if tapping a shooting star
     const starIndex = ShootingStars.hitTest(x, y);
@@ -126,15 +138,26 @@ function init() {
       return;
     }
 
-    // If holding droplet, try to water a plant
-    if (ShootingStars.droplet) {
-      // Droplet is dragged, not tapped - skip
+    // Check if tapping an animal (opens accessory tray)
+    const animal = Animals.handleTap(x, y);
+    if (animal) {
+      if (Rewards.getUnlockedByType('accessory').length > 0) {
+        UI.showAccessoryTray(animal);
+      }
       return;
     }
 
-    // Check if tapping an animal
-    const animal = Animals.handleTap(x, y);
-    if (animal) return;
+    // If a decoration is selected and tap is on planet, place it
+    if (UI.selectedDecoration && Planet.hitTest(x, y)) {
+      const angle = Planet.screenToSurfaceAngle(x, y);
+      Decorations.placeDecoration(UI.selectedDecoration, angle);
+      GameAudio.playAccessoryPlace();
+      const pos = Planet.surfacePoint(angle);
+      Particles.emit(pos.x, pos.y, { count: 6, color: '#ffffcc', speed: 25, life: 0.4, size: 2 });
+      UI.selectedDecoration = null;
+      UI.trayItems.forEach(btn => btn.classList.remove('selected'));
+      return;
+    }
 
     // If a plant type is selected and tap is on planet, place it
     if (Plants.selectedType >= 0 && Planet.hitTest(x, y)) {

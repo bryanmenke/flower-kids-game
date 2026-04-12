@@ -82,3 +82,7 @@ html, body {
   height: 60px;
   pointer-events: none;
 }
+
+#accessory-tray {
+  background: linear-gradient(to top, rgba(40, 20, 60, 0.95), rgba(30, 15, 50, 0.7), transparent);
+}
