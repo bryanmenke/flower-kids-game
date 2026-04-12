@@ -85,6 +85,25 @@ function init() {
   resizeCanvas();
   initStars();
   Planet.init();
+
+  Input.init();
+
+  // Swipe/drag to spin planet
+  Input.onDragMove = (x, y, dx, dy) => {
+    if (Planet.hitTest(x, y)) {
+      Planet.rotationVelocity = dx * 0.01;
+    }
+  };
+
+  Input.onSwipe = (velX, velY) => {
+    Planet.spin(velX);
+  };
+
+  Input.onTap = (x, y) => {
+    // Will be used later for planting, catching stars, tapping animals
+    console.log('Tap at', x, y, 'on planet:', Planet.hitTest(x, y));
+  };
+
   window.addEventListener('resize', () => {
     resizeCanvas();
     initStars();
