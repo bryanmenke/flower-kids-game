@@ -96,11 +96,13 @@ function init() {
   };
 
   Input.onSwipe = (velX, velY) => {
+    GameAudio.ensure();
     Planet.spin(velX);
+    GameAudio.playSpinWhoosh(velX);
   };
 
   Input.onTap = (x, y) => {
-    // Will be used later for planting, catching stars, tapping animals
+    GameAudio.init();
     console.log('Tap at', x, y, 'on planet:', Planet.hitTest(x, y));
   };
 
