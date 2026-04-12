@@ -76,9 +76,12 @@ function gameLoop(timestamp) {
 
   ShootingStars.update(Game.deltaTime);
   Planet.update(Game.deltaTime);
+  Animals.update(Game.deltaTime);
+
   Planet.draw(ctx);
   Plants.drawPlacementHints(ctx);
   Plants.draw(ctx);
+  Animals.draw(ctx);
 
   // Ambient particles around bloomed plants
   for (const plant of Plants.items) {
@@ -123,6 +126,10 @@ function init() {
       // Droplet is dragged, not tapped - skip
       return;
     }
+
+    // Check if tapping an animal
+    const animal = Animals.handleTap(x, y);
+    if (animal) return;
 
     // If a plant type is selected and tap is on planet, place it
     if (Plants.selectedType >= 0 && Planet.hitTest(x, y)) {
