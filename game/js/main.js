@@ -74,6 +74,7 @@ function gameLoop(timestamp) {
   ctx.clearRect(0, 0, Game.width, Game.height);
   drawBackground();
 
+  ShootingStars.update(Game.deltaTime);
   Planet.update(Game.deltaTime);
   Planet.draw(ctx);
   Plants.drawPlacementHints(ctx);
@@ -89,6 +90,7 @@ function gameLoop(timestamp) {
     }
   }
 
+  ShootingStars.draw(ctx);
   Particles.update(Game.deltaTime);
   Particles.draw(ctx);
 
@@ -104,21 +106,25 @@ function init() {
   Input.init();
   UI.init();
 
-  Input.onDragMove = (x, y, dx, dy) => {
-    if (Planet.hitTest(x, y)) {
-      Planet.rotationVelocity = dx * 0.01;
-    }
-  };
-
-  Input.onSwipe = (velX, velY) => {
-    GameAudio.ensure();
-    Planet.spin(velX);
-    GameAudio.playSpinWhoosh(velX);
-  };
-
   Input.onTap = (x, y) => {
     GameAudio.init();
 
+    // Check if tapping a shooting star
+    const starIndex = ShootingStars.hitTest(x, y);
+    if (starIndex >= 0) {
+      ShootingStars.catchStar(starIndex);
+      GameAudio.playStarCatch();
+      Particles.emit(x, y, { count: 12, color: '#ffffaa', speed: 60, life: 0.4, size: 3 });
+      return;
+    }
+
+    // If holding droplet, try to water a plant
+    if (ShootingStars.droplet) {
+      // Droplet is dragged, not tapped - skip
+      return;
+    }
+
+    // If a plant type is selected and tap is on planet, place it
     if (Plants.selectedType >= 0 && Planet.hitTest(x, y)) {
       const typeIndex = Plants.selectedType;
       const angle = Planet.screenToSurfaceAngle(x, y);
@@ -128,6 +134,48 @@ function init() {
       Particles.emit(pos.x, pos.y, { count: 8, color: PlantTypes[typeIndex].color, speed: 30, life: 0.5, size: 3 });
       Plants.selectedType = -1;
       UI.trayItems.forEach(btn => btn.classList.remove('selected'));
+      return;
+    }
+  };
+
+  Input.onDragStart = (x, y) => {
+    // Check if starting drag on a shooting star
+    const starIndex = ShootingStars.hitTest(x, y);
+    if (starIndex >= 0) {
+      ShootingStars.catchStar(starIndex);
+      GameAudio.playStarCatch();
+      GameAudio.startDragShimmer();
+      Particles.emit(x, y, { count: 12, color: '#ffffaa', speed: 60, life: 0.4, size: 3 });
+    }
+  };
+
+  Input.onDragMove = (x, y, dx, dy) => {
+    if (ShootingStars.isDraggingDroplet) {
+      ShootingStars.moveDroplet(x, y);
+    } else if (Planet.hitTest(x, y)) {
+      Planet.rotationVelocity = dx * 0.01;
+    }
+  };
+
+  Input.onDragEnd = (x, y, velX, velY) => {
+    if (ShootingStars.isDraggingDroplet) {
+      GameAudio.stopDragShimmer();
+      const plant = ShootingStars.releaseDroplet(x, y);
+      if (plant) {
+        // Bloom the plant!
+        Plants.bloomPlant(plant);
+        const pos = Planet.surfacePoint(plant.angle);
+        GameAudio.playBloom(plant.typeIndex);
+        Particles.emitBloom(pos.x, pos.y, PlantTypes[plant.typeIndex].bloomColors);
+      }
+    }
+  };
+
+  Input.onSwipe = (velX, velY) => {
+    if (!ShootingStars.isDraggingDroplet) {
+      GameAudio.ensure();
+      Planet.spin(velX);
+      GameAudio.playSpinWhoosh(velX);
     }
   };
 
