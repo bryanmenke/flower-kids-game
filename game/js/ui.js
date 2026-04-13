@@ -1,15 +1,13 @@
-// UI - Garden tray, accessory tray, overlays
+// UI - Garden tray, accessory tray, parent reset button
+// Depends on: Plants, PlantTypes, Rewards, RewardPool, DecorationDefs, DecorationIds,
+//             AnimalRenderer, GameAudio, Storage
 
 const UI = {
   trayElement: null,
-  trayItems: [],
-  currentTray: 'garden', // 'garden' | 'accessory'
-
-  // Accessory tray
   accessoryTrayElement: null,
-  accessoryTrayItems: [],
-  selectedAnimal: null,
-  selectedDecoration: null,
+  currentTray: 'garden',    // 'garden' | 'accessory'
+  selectedAnimal: null,     // animal object for accessory equip
+  selectedDecoration: null, // decoration id string for placement
 
   init() {
     this.createGardenTray();
@@ -19,246 +17,243 @@ const UI = {
 
   createGardenTray() {
     const overlay = document.getElementById('ui-overlay');
-
-    this.trayElement = document.createElement('div');
-    this.trayElement.id = 'garden-tray';
-    this.trayElement.className = 'tray';
-    overlay.appendChild(this.trayElement);
-
+    const tray = document.createElement('div');
+    tray.id = 'garden-tray';
+    tray.className = 'tray';
+    overlay.appendChild(tray);
+    this.trayElement = tray;
     this.refreshGardenTray();
   },
 
   refreshGardenTray() {
-    // Clear and rebuild with plants + unlocked decorations
-    this.trayElement.innerHTML = '';
-    this.trayItems = [];
+    const tray = this.trayElement;
+    tray.innerHTML = '';
 
-    // Plant buttons (skip rare types unless their seed is unlocked)
-    PlantTypes.forEach((type, index) => {
-      if (type.seedId && !Rewards.isUnlocked(type.seedId)) return;
+    // Plant type buttons
+    for (let i = 0; i < PlantTypes.length; i++) {
+      const pType = PlantTypes[i];
+      // Skip rare types that aren't unlocked
+      if (pType.seedId && !Rewards.isUnlocked(pType.seedId)) continue;
+
       const btn = document.createElement('div');
       btn.className = 'tray-item';
-      btn.dataset.type = 'plant';
-      btn.dataset.index = index;
+      if (Plants.selectedType === i) btn.classList.add('selected');
 
-      const iconCanvas = document.createElement('canvas');
-      const iconSize = 70;
-      iconCanvas.width = iconSize;
-      iconCanvas.height = iconSize;
-      const iconCtx = iconCanvas.getContext('2d');
-      type.icon(iconCtx, iconSize / 2, iconSize / 2, iconSize * 0.45);
-      btn.appendChild(iconCanvas);
+      // Draw plant icon on a mini canvas
+      const miniCanvas = document.createElement('canvas');
+      miniCanvas.width = 120;
+      miniCanvas.height = 120;
+      const mCtx = miniCanvas.getContext('2d');
+      mCtx.translate(60, 90);
+      // Draw bloom stage (stage 4) as icon
+      PlantRenderer.draw(mCtx, i, 4, 1.0, 1.2, 0);
+      btn.appendChild(miniCanvas);
 
-      btn.addEventListener('touchstart', (e) => {
-        e.preventDefault();
+      btn.addEventListener('pointerdown', (e) => {
         e.stopPropagation();
-        this.selectPlantType(index);
-      });
-      btn.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.selectPlantType(index);
+        GameAudio.ensure();
+        this.selectPlantType(i);
       });
 
-      this.trayElement.appendChild(btn);
-      this.trayItems.push(btn);
-    });
+      tray.appendChild(btn);
+    }
 
     // Unlocked decoration buttons
-    const decos = Rewards.getUnlockedByType('decoration');
-    decos.forEach((deco) => {
+    const unlockedDecos = Rewards.getUnlockedByType('decoration');
+    for (const reward of unlockedDecos) {
+      const decoId = reward.itemId;
+      const def = DecorationDefs[decoId];
+      if (!def) continue;
+
       const btn = document.createElement('div');
       btn.className = 'tray-item';
-      btn.dataset.type = 'decoration';
-      btn.dataset.id = deco.id;
+      if (this.selectedDecoration === decoId) btn.classList.add('selected');
 
-      const iconCanvas = document.createElement('canvas');
-      const iconSize = 70;
-      iconCanvas.width = iconSize;
-      iconCanvas.height = iconSize;
-      const iconCtx = iconCanvas.getContext('2d');
-      const def = DecorationDefs[deco.id];
-      if (def) {
-        def.draw(iconCtx, iconSize / 2, iconSize / 2, iconSize * 0.8);
-      }
-      btn.appendChild(iconCanvas);
+      // Draw decoration icon
+      const miniCanvas = document.createElement('canvas');
+      miniCanvas.width = 120;
+      miniCanvas.height = 120;
+      const mCtx = miniCanvas.getContext('2d');
+      mCtx.translate(60, 80);
+      def.draw(mCtx, 60, 0);
+      btn.appendChild(miniCanvas);
 
-      btn.addEventListener('touchstart', (e) => {
-        e.preventDefault();
+      btn.addEventListener('pointerdown', (e) => {
         e.stopPropagation();
-        this.selectDecoration(deco.id);
-      });
-      btn.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.selectDecoration(deco.id);
+        GameAudio.ensure();
+        this.selectDecoration(decoId);
       });
 
-      this.trayElement.appendChild(btn);
-      this.trayItems.push(btn);
-    });
+      tray.appendChild(btn);
+    }
   },
 
   selectPlantType(index) {
-    GameAudio.ensure();
-    this.selectedDecoration = null;
-    // Toggle selection
     if (Plants.selectedType === index) {
-      Plants.selectedType = -1;
+      Plants.selectedType = -1; // deselect
     } else {
       Plants.selectedType = index;
+      this.selectedDecoration = null;
     }
-
-    // Update visual selection
-    this.trayItems.forEach((btn) => {
-      btn.classList.toggle('selected',
-        (btn.dataset.type === 'plant' && parseInt(btn.dataset.index) === Plants.selectedType) ||
-        (btn.dataset.type === 'decoration' && btn.dataset.id === this.selectedDecoration)
-      );
-    });
+    this.refreshGardenTray();
   },
 
   selectDecoration(decoId) {
-    GameAudio.ensure();
-    Plants.selectedType = -1;
     if (this.selectedDecoration === decoId) {
-      this.selectedDecoration = null;
+      this.selectedDecoration = null; // deselect
     } else {
       this.selectedDecoration = decoId;
+      Plants.selectedType = -1;
     }
-    this.trayItems.forEach(btn => {
-      btn.classList.toggle('selected',
-        (btn.dataset.type === 'decoration' && btn.dataset.id === this.selectedDecoration) ||
-        (btn.dataset.type === 'plant' && parseInt(btn.dataset.index) === Plants.selectedType)
-      );
-    });
+    this.refreshGardenTray();
   },
-
-  // --- Accessory Tray ---
 
   createAccessoryTray() {
     const overlay = document.getElementById('ui-overlay');
-
-    this.accessoryTrayElement = document.createElement('div');
-    this.accessoryTrayElement.id = 'accessory-tray';
-    this.accessoryTrayElement.className = 'tray';
-    this.accessoryTrayElement.style.display = 'none';
-    overlay.appendChild(this.accessoryTrayElement);
+    const tray = document.createElement('div');
+    tray.id = 'accessory-tray';
+    tray.className = 'tray';
+    tray.style.display = 'none';
+    overlay.appendChild(tray);
+    this.accessoryTrayElement = tray;
   },
 
   showAccessoryTray(animal) {
     this.selectedAnimal = animal;
-    this.hideGardenTray();
-
-    // Clear existing items
+    this.currentTray = 'accessory';
+    this.trayElement.style.display = 'none';
+    this.accessoryTrayElement.style.display = '';
     this.accessoryTrayElement.innerHTML = '';
-    this.accessoryTrayItems = [];
 
-    // Add unlocked accessories
-    const accessories = Rewards.getUnlockedByType('accessory');
-    for (const acc of accessories) {
+    // "Remove accessory" button if animal has one
+    if (animal.accessory) {
+      const removeBtn = document.createElement('div');
+      removeBtn.className = 'tray-item';
+      removeBtn.style.borderColor = 'rgba(255, 100, 100, 0.5)';
+      // X icon
+      const miniCanvas = document.createElement('canvas');
+      miniCanvas.width = 120;
+      miniCanvas.height = 120;
+      const mCtx = miniCanvas.getContext('2d');
+      mCtx.strokeStyle = '#ff6666';
+      mCtx.lineWidth = 6;
+      mCtx.lineCap = 'round';
+      mCtx.beginPath();
+      mCtx.moveTo(40, 40);
+      mCtx.lineTo(80, 80);
+      mCtx.moveTo(80, 40);
+      mCtx.lineTo(40, 80);
+      mCtx.stroke();
+      removeBtn.appendChild(miniCanvas);
+
+      removeBtn.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        this.equipAccessory(null);
+      });
+      this.accessoryTrayElement.appendChild(removeBtn);
+    }
+
+    // Unlocked accessories
+    const unlockedAcc = Rewards.getUnlockedByType('accessory');
+    const accessoryIds = ['crown', 'bow', 'sunglasses', 'wreath', 'wings', 'cape',
+                          'scarf', 'collar', 'tophat', 'butterfly', 'backpack', 'halo'];
+
+    for (const accId of accessoryIds) {
+      // Check if unlocked
+      const isUnlocked = unlockedAcc.some(r => r.itemId === accId);
+      if (!isUnlocked) continue;
+
       const btn = document.createElement('div');
       btn.className = 'tray-item';
-      if (animal.accessory === acc.id) btn.classList.add('selected');
+      if (animal.accessory === accId) btn.classList.add('selected');
 
-      const iconCanvas = document.createElement('canvas');
-      const iconSize = 70;
-      iconCanvas.width = iconSize;
-      iconCanvas.height = iconSize;
-      const iconCtx = iconCanvas.getContext('2d');
-      const def = AccessoryDefs[acc.id];
-      if (def) {
-        def.draw(iconCtx, iconSize / 2, iconSize / 2, iconSize * 0.8);
-      }
-      btn.appendChild(iconCanvas);
+      // Draw accessory icon
+      const miniCanvas = document.createElement('canvas');
+      miniCanvas.width = 120;
+      miniCanvas.height = 120;
+      const mCtx = miniCanvas.getContext('2d');
+      mCtx.translate(60, 60);
+      // Draw the accessory at a reasonable icon size
+      AnimalRenderer.drawAccessory(mCtx, animal.typeIndex, accId, 80, 0);
+      btn.appendChild(miniCanvas);
 
-      btn.addEventListener('touchstart', (e) => {
-        e.preventDefault();
+      btn.addEventListener('pointerdown', (e) => {
         e.stopPropagation();
-        this.equipAccessory(acc.id);
-      });
-      btn.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.equipAccessory(acc.id);
+        this.equipAccessory(accId);
       });
 
       this.accessoryTrayElement.appendChild(btn);
-      this.accessoryTrayItems.push({ btn, id: acc.id });
     }
 
-    // Show empty tray if no accessories unlocked
-    if (accessories.length === 0) {
-      const empty = document.createElement('div');
-      empty.style.color = 'rgba(255,255,255,0.4)';
-      empty.style.fontSize = '14px';
-      empty.style.textAlign = 'center';
-      empty.style.width = '100%';
-      empty.textContent = '';
-      this.accessoryTrayElement.appendChild(empty);
-    }
+    // Close button (tap outside or back button)
+    const closeBtn = document.createElement('div');
+    closeBtn.className = 'tray-item';
+    closeBtn.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+    const miniCanvas = document.createElement('canvas');
+    miniCanvas.width = 120;
+    miniCanvas.height = 120;
+    const mCtx = miniCanvas.getContext('2d');
+    mCtx.fillStyle = '#aaaaaa';
+    mCtx.font = '48px sans-serif';
+    mCtx.textAlign = 'center';
+    mCtx.textBaseline = 'middle';
+    mCtx.fillText('\u2190', 60, 60); // left arrow
+    closeBtn.appendChild(miniCanvas);
 
-    this.accessoryTrayElement.style.display = 'flex';
-    this.currentTray = 'accessory';
+    closeBtn.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      this.hideAccessoryTray();
+    });
+    this.accessoryTrayElement.appendChild(closeBtn);
   },
 
   hideAccessoryTray() {
-    if (this.accessoryTrayElement) this.accessoryTrayElement.style.display = 'none';
     this.selectedAnimal = null;
-    this.showGardenTray();
+    this.currentTray = 'garden';
+    this.accessoryTrayElement.style.display = 'none';
+    this.trayElement.style.display = '';
   },
 
   equipAccessory(accId) {
     if (!this.selectedAnimal) return;
-    // Toggle: if same accessory, remove it
     if (this.selectedAnimal.accessory === accId) {
+      // Toggle off
       this.selectedAnimal.accessory = null;
     } else {
       this.selectedAnimal.accessory = accId;
-      GameAudio.playAccessoryPlace();
     }
-    // Refresh tray selection state
-    this.accessoryTrayItems.forEach(item => {
-      item.btn.classList.toggle('selected', this.selectedAnimal && this.selectedAnimal.accessory === item.id);
-    });
+    GameAudio.playAccessoryPlace();
     Storage.save();
+    // Refresh the accessory tray to update selection state
+    this.showAccessoryTray(this.selectedAnimal);
   },
 
-  // Show/hide trays
   showGardenTray() {
-    if (this.trayElement) this.trayElement.style.display = 'flex';
-    this.currentTray = 'garden';
+    this.trayElement.style.display = '';
   },
 
   hideGardenTray() {
-    if (this.trayElement) this.trayElement.style.display = 'none';
+    this.trayElement.style.display = 'none';
   },
 
   createResetButton() {
+    const overlay = document.getElementById('ui-overlay');
     const btn = document.createElement('div');
     btn.id = 'reset-btn';
-    btn.style.cssText = 'position:absolute;top:8px;right:8px;width:30px;height:30px;opacity:0.05;z-index:100;';
+    btn.style.cssText = 'position:absolute;top:8px;right:8px;width:40px;height:40px;opacity:0;z-index:100;';
 
     let pressTimer = null;
-    const startPress = (e) => {
-      e.preventDefault();
+    btn.addEventListener('pointerdown', () => {
       pressTimer = setTimeout(() => {
-        if (confirm('Reset garden? This cannot be undone.')) {
+        if (confirm('Reset garden? All progress will be lost.')) {
           Storage.clearSave();
           window.location.reload();
         }
       }, 2000);
-    };
-    const endPress = () => {
-      clearTimeout(pressTimer);
-    };
-
-    btn.addEventListener('touchstart', startPress);
-    btn.addEventListener('mousedown', startPress);
-    btn.addEventListener('touchend', endPress);
-    btn.addEventListener('mouseup', endPress);
-    btn.addEventListener('touchcancel', endPress);
-
-    document.getElementById('ui-overlay').appendChild(btn);
+    });
+    btn.addEventListener('pointerup', () => clearTimeout(pressTimer));
+    btn.addEventListener('pointercancel', () => clearTimeout(pressTimer));
+    btn.addEventListener('pointerleave', () => clearTimeout(pressTimer));
+    overlay.appendChild(btn);
   },
 };
