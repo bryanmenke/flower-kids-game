@@ -309,7 +309,7 @@ const Decorations = {
     if (!def) return;
     ctx.save();
     ctx.translate(x, y);
-    const s = 40 * scale;
+    const s = 120 * scale;
     def.draw(ctx, s, Game.time);
     ctx.restore();
   },

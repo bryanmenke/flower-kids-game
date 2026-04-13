@@ -70,7 +70,7 @@ const Rewards = {
       x,
       y: -40,          // start above screen
       targetY,
-      size: 25,         // 50% larger than v1
+      size: 50,         // 3x scale
       age: 0,
       opened: false,
       openAnim: 0,
@@ -278,7 +278,7 @@ const Rewards = {
       if (star.opened) continue;
       const dx = x - star.x;
       const dy = y - star.y;
-      if (dx * dx + dy * dy < 50 * 50) {
+      if (dx * dx + dy * dy < 90 * 90) {
         this.openGiftStar(star);
         return true;
       }

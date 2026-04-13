@@ -93,7 +93,7 @@ const Animals = {
       const animal = this.items[i];
       const pos = Camera.worldToScreen(animal.angle, animal.depth);
       if (!pos.visible) continue;
-      const hitRadius = 30 * pos.scale;
+      const hitRadius = 90 * pos.scale;
       const dx = screenX - pos.x;
       const dy = screenY - (pos.y - hitRadius * 0.3);
       const dist = Math.sqrt(dx * dx + dy * dy);

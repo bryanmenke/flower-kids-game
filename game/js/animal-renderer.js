@@ -5,7 +5,7 @@
 
 const AnimalRenderer = {
   draw(ctx, typeIndex, scale, time, idleTimer, accessoryId) {
-    const s = 35 * scale; // base size unit
+    const s = 105 * scale; // base size unit
     ctx.save();
     const drawFn = this._types[typeIndex % this._types.length];
     if (drawFn) drawFn(ctx, s, time, idleTimer);

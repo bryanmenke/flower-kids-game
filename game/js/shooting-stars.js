@@ -75,7 +75,7 @@ const ShootingStars = {
 
     this.items.push({
       x, y, vx, vy,
-      size: 3 + Math.random() * 2,
+      size: 8 + Math.random() * 5,
       age: 0,
       color,
       trail: [{ x, y }],
@@ -88,7 +88,7 @@ const ShootingStars = {
       const star = this.items[i];
       const dx = x - star.x;
       const dy = y - star.y;
-      if (dx * dx + dy * dy < 45 * 45) { // 45px radius for easy catching
+      if (dx * dx + dy * dy < 80 * 80) { // 80px radius for easy catching
         return i;
       }
     }
@@ -181,7 +181,7 @@ const ShootingStars = {
       for (let i = 1; i < d.trail.length; i++) {
         const t = d.trail[i];
         const alpha = 0.4 * (1 - i / d.trail.length);
-        const r = 3 * (1 - i / d.trail.length);
+        const r = 7 * (1 - i / d.trail.length);
         ctx.save();
         ctx.globalAlpha = alpha;
         ctx.fillStyle = '#88ccff';
@@ -196,7 +196,7 @@ const ShootingStars = {
       ctx.translate(d.x, d.y);
 
       // Teardrop: rounded bottom, pointed top
-      const dropR = 10;
+      const dropR = 25;
       ctx.fillStyle = '#66bbff';
       ctx.beginPath();
       ctx.moveTo(0, -dropR * 1.6);          // pointed top
