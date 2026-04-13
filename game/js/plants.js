@@ -4,8 +4,8 @@
 const PlantTypes = [
   { id: 'roseBush',       name: 'Rose Bush',        bloomColors: ['#cc3355', '#ff6688', '#ee4466', '#ffaacc', '#ffffff'] },
   { id: 'sunflower',      name: 'Sunflower',        bloomColors: ['#ffcc22', '#ffdd44', '#eeaa00', '#ffee66', '#ffffff'] },
-  { id: 'willowTree',     name: 'Willow Tree',      bloomColors: ['#88cc88', '#66aa66', '#aaddaa', '#bbeeaa', '#ffffff'] },
-  { id: 'mushroomCluster', name: 'Mushroom Cluster', bloomColors: ['#aaffaa', '#ccffcc', '#88ee88', '#ddfedd', '#ffffff'] },
+  { id: 'tulipCluster',   name: 'Tulip Cluster',    bloomColors: ['#ff2244', '#ffdd00', '#ff69b4', '#9933cc', '#ff6600'] },
+  { id: 'daisyPatch',     name: 'Daisy Patch',      bloomColors: ['#ffffff', '#ffff66', '#88dd44', '#ffccee', '#aaeeff'] },
   { id: 'lavender',       name: 'Lavender',         bloomColors: ['#9966cc', '#bb88dd', '#7744aa', '#ddbbff', '#ffffff'] },
   // Rare types — unlocked via seed rewards
   { id: 'rainbowTree',    name: 'Rainbow Tree',     bloomColors: ['#ff4444', '#ff8844', '#ffcc44', '#44cc44', '#4488ff', '#8844cc'], seedId: 'seed_rainbowTree' },
@@ -75,7 +75,7 @@ const Plants = {
     for (const plant of this.items) {
       const pos = Camera.worldToScreen(plant.angle, plant.depth);
       if (!pos.visible) continue;
-      const hitRadius = 35 * pos.scale;
+      const hitRadius = 80 * pos.scale;
       const dx = screenX - pos.x;
       const dy = screenY - (pos.y - hitRadius * 0.5); // center hitbox on plant body
       const dist = Math.sqrt(dx * dx + dy * dy);
