@@ -1,300 +1,131 @@
-// Plants - Types, placement, growth, bloom rendering
+// Plants - Plant data, growth state machine, placement, hit testing
+// Depends on: Camera, PlantRenderer, Game
 
 const PlantTypes = [
-  {
-    id: 'glowFlower',
-    name: 'Glow Flower',
-    color: '#ff69b4',       // pink
-    glowColor: 'rgba(255, 105, 180, 0.4)',
-    bloomColors: ['#ff69b4', '#ff99cc', '#ffccdd'],
-    icon: (ctx, x, y, size) => {
-      // Simple flower icon for tray
-      ctx.fillStyle = '#ff69b4';
-      for (let i = 0; i < 5; i++) {
-        const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
-        ctx.beginPath();
-        ctx.arc(x + Math.cos(a) * size * 0.3, y + Math.sin(a) * size * 0.3, size * 0.22, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.fillStyle = '#ffdd44';
-      ctx.beginPath();
-      ctx.arc(x, y, size * 0.15, 0, Math.PI * 2);
-      ctx.fill();
-    },
-  },
-  {
-    id: 'crystalMushroom',
-    name: 'Crystal Mushroom',
-    color: '#88ddff',       // cyan
-    glowColor: 'rgba(136, 221, 255, 0.4)',
-    bloomColors: ['#88ddff', '#aaeeff', '#ccf4ff'],
-    icon: (ctx, x, y, size) => {
-      // Mushroom cap
-      ctx.fillStyle = '#88ddff';
-      ctx.beginPath();
-      ctx.ellipse(x, y - size * 0.1, size * 0.35, size * 0.25, 0, Math.PI, 0);
-      ctx.fill();
-      // Stem
-      ctx.fillStyle = '#ddeeff';
-      ctx.fillRect(x - size * 0.08, y - size * 0.1, size * 0.16, size * 0.35);
-    },
-  },
-  {
-    id: 'sparkleTree',
-    name: 'Sparkle Tree',
-    color: '#88ee88',       // green
-    glowColor: 'rgba(136, 238, 136, 0.4)',
-    bloomColors: ['#88ee88', '#aaffaa', '#eeffcc'],
-    icon: (ctx, x, y, size) => {
-      // Triangle tree
-      ctx.fillStyle = '#88ee88';
-      ctx.beginPath();
-      ctx.moveTo(x, y - size * 0.4);
-      ctx.lineTo(x + size * 0.3, y + size * 0.15);
-      ctx.lineTo(x - size * 0.3, y + size * 0.15);
-      ctx.closePath();
-      ctx.fill();
-      // Trunk
-      ctx.fillStyle = '#8B6914';
-      ctx.fillRect(x - size * 0.06, y + size * 0.15, size * 0.12, size * 0.2);
-    },
-  },
-  {
-    id: 'starBush',
-    name: 'Star Bush',
-    color: '#ffdd44',       // gold
-    glowColor: 'rgba(255, 221, 68, 0.4)',
-    bloomColors: ['#ffdd44', '#ffee88', '#ffffcc'],
-    icon: (ctx, x, y, size) => {
-      // Star shape
-      ctx.fillStyle = '#ffdd44';
-      ctx.beginPath();
-      for (let i = 0; i < 5; i++) {
-        const outerAngle = (i / 5) * Math.PI * 2 - Math.PI / 2;
-        const innerAngle = outerAngle + Math.PI / 5;
-        ctx.lineTo(x + Math.cos(outerAngle) * size * 0.35, y + Math.sin(outerAngle) * size * 0.35);
-        ctx.lineTo(x + Math.cos(innerAngle) * size * 0.15, y + Math.sin(innerAngle) * size * 0.15);
-      }
-      ctx.closePath();
-      ctx.fill();
-    },
-  },
-  {
-    id: 'rainbowVine',
-    name: 'Rainbow Vine',
-    color: '#cc77ff',       // purple
-    glowColor: 'rgba(204, 119, 255, 0.4)',
-    bloomColors: ['#ff6666', '#ffaa44', '#ffdd44', '#88ee88', '#66bbff', '#cc77ff'],
-    icon: (ctx, x, y, size) => {
-      // Swirly vine
-      ctx.strokeStyle = '#cc77ff';
-      ctx.lineWidth = size * 0.08;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      for (let i = 0; i <= 20; i++) {
-        const t = i / 20;
-        const vx = x + Math.sin(t * Math.PI * 3) * size * 0.25;
-        const vy = y + size * 0.35 - t * size * 0.7;
-        if (i === 0) ctx.moveTo(vx, vy);
-        else ctx.lineTo(vx, vy);
-      }
-      ctx.stroke();
-      // Little flower on top
-      ctx.fillStyle = '#ff88cc';
-      ctx.beginPath();
-      ctx.arc(x + Math.sin(Math.PI * 3) * size * 0.25, y - size * 0.35, size * 0.1, 0, Math.PI * 2);
-      ctx.fill();
-    },
-  },
-  // --- Rare seed plants (unlocked via gift star rewards) ---
-  {
-    id: 'rainbowTree',
-    name: 'Rainbow Tree',
-    color: '#ff6666',
-    glowColor: 'rgba(255, 150, 100, 0.5)',
-    bloomColors: ['#ff6666', '#ffaa44', '#ffdd44', '#88ee88', '#66bbff', '#cc77ff'],
-    seedId: 'rainbowTree', // matches RewardPool item id
-    icon: (ctx, x, y, size) => {
-      // Rainbow trunk
-      ctx.fillStyle = '#cc8844';
-      ctx.fillRect(x - size * 0.07, y + size * 0.05, size * 0.14, size * 0.35);
-      // Rainbow layered canopy
-      const colors = ['#ff6666', '#ffaa44', '#ffdd44', '#88ee88', '#66bbff', '#cc77ff'];
-      for (let i = colors.length - 1; i >= 0; i--) {
-        ctx.fillStyle = colors[i];
-        ctx.beginPath();
-        const r = size * (0.38 - i * 0.03);
-        const yOff = y - size * 0.15 - i * size * 0.04;
-        ctx.arc(x, yOff, r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    },
-  },
-  {
-    id: 'fireworkFlower',
-    name: 'Firework Flower',
-    color: '#ffaa44',
-    glowColor: 'rgba(255, 170, 68, 0.5)',
-    bloomColors: ['#ff4444', '#ff8833', '#ffaa44', '#ffdd66', '#ffffff'],
-    seedId: 'fireworkFlower', // matches RewardPool item id
-    icon: (ctx, x, y, size) => {
-      // Stem
-      ctx.strokeStyle = '#66aa44';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(x, y + size * 0.35);
-      ctx.lineTo(x, y - size * 0.05);
-      ctx.stroke();
-      // Firework burst petals
-      const burstColors = ['#ff4444', '#ff8833', '#ffaa44', '#ffdd66', '#ff4444', '#ff8833', '#ffaa44', '#ffdd66'];
-      for (let i = 0; i < 8; i++) {
-        const a = (i / 8) * Math.PI * 2 - Math.PI / 2;
-        ctx.strokeStyle = burstColors[i];
-        ctx.lineWidth = size * 0.06;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(x + Math.cos(a) * size * 0.08, y - size * 0.15 + Math.sin(a) * size * 0.08);
-        ctx.lineTo(x + Math.cos(a) * size * 0.3, y - size * 0.15 + Math.sin(a) * size * 0.3);
-        ctx.stroke();
-      }
-      // Center
-      ctx.fillStyle = '#ffdd66';
-      ctx.beginPath();
-      ctx.arc(x, y - size * 0.15, size * 0.1, 0, Math.PI * 2);
-      ctx.fill();
-    },
-  },
+  { id: 'roseBush',       name: 'Rose Bush',        bloomColors: ['#cc3355', '#ff6688', '#ee4466', '#ffaacc', '#ffffff'] },
+  { id: 'sunflower',      name: 'Sunflower',        bloomColors: ['#ffcc22', '#ffdd44', '#eeaa00', '#ffee66', '#ffffff'] },
+  { id: 'willowTree',     name: 'Willow Tree',      bloomColors: ['#88cc88', '#66aa66', '#aaddaa', '#bbeeaa', '#ffffff'] },
+  { id: 'mushroomCluster', name: 'Mushroom Cluster', bloomColors: ['#aaffaa', '#ccffcc', '#88ee88', '#ddfedd', '#ffffff'] },
+  { id: 'lavender',       name: 'Lavender',         bloomColors: ['#9966cc', '#bb88dd', '#7744aa', '#ddbbff', '#ffffff'] },
+  // Rare types — unlocked via seed rewards
+  { id: 'rainbowTree',    name: 'Rainbow Tree',     bloomColors: ['#ff4444', '#ff8844', '#ffcc44', '#44cc44', '#4488ff', '#8844cc'], seedId: 'seed_rainbowTree' },
+  { id: 'fireworkFlower',  name: 'Firework Flower', bloomColors: ['#ff4422', '#ff8844', '#ffcc22', '#ffffff', '#ffee88'], seedId: 'seed_fireworkFlower' },
 ];
 
 const Plants = {
-  items: [],   // all placed plants: { typeIndex, angle, state: 'sprout'|'bloomed', bloomTime }
-  selectedType: -1,  // index into PlantTypes, -1 = none selected
+  items: [],       // { typeIndex, angle, depth, growthStage, growthProgress, growthAnimating, plantedTime }
+  selectedType: -1, // index into PlantTypes, -1 = none
 
-  addPlant(typeIndex, surfaceAngle) {
+  addPlant(typeIndex, angle, depth) {
     const plant = {
       typeIndex,
-      angle: surfaceAngle,
-      state: 'sprout',
-      bloomTime: 0,
-      wobble: Math.random() * Math.PI * 2, // random wobble offset
+      angle,
+      depth,
+      growthStage: 0,       // 0=seed, 1=sprout, 2=young, 3=mature, 4=bloom
+      growthProgress: 1.0,  // start fully "arrived" in seed stage
+      growthAnimating: false,
+      plantedTime: Game.time,
     };
     this.items.push(plant);
     return plant;
   },
 
-  bloomPlant(plant) {
-    plant.state = 'bloomed';
-    plant.bloomTime = Game.time;
+  // Water a plant: advance growth stage, trigger grow animation
+  // Returns true if watered, false if already fully bloomed
+  waterPlant(plant) {
+    if (plant.growthStage >= 4) return false;
+    plant.growthStage++;
+    plant.growthProgress = 0;
+    plant.growthAnimating = true;
+    return true;
   },
 
-  // Draw all plants on the planet surface
-  draw(ctx) {
-    // Sort by depth so back-of-planet plants draw first
-    const sorted = [...this.items].map(p => {
-      const pos = Planet.surfacePoint(p.angle);
-      return { plant: p, pos };
-    }).sort((a, b) => a.pos.depth - b.pos.depth);
+  // Check if a plant is fully bloomed
+  isBloomed(plant) {
+    return plant.growthStage >= 4;
+  },
 
-    for (const { plant, pos } of sorted) {
-      if (!pos.visible) continue;
-      const type = PlantTypes[plant.typeIndex];
-      const size = Planet.radius * 0.15 * pos.scale;
+  // Count total blooms
+  bloomCount() {
+    let count = 0;
+    for (const p of this.items) {
+      if (p.growthStage >= 4) count++;
+    }
+    return count;
+  },
 
-      ctx.save();
-      ctx.translate(pos.x, pos.y);
-
-      if (plant.state === 'sprout') {
-        this.drawSprout(ctx, type, size, plant);
-      } else {
-        this.drawBloomed(ctx, type, size, plant);
+  update(dt) {
+    // Animate growth transitions
+    for (const plant of this.items) {
+      if (plant.growthAnimating) {
+        plant.growthProgress += dt * 2.0; // 0.5s to fully animate
+        if (plant.growthProgress >= 1.0) {
+          plant.growthProgress = 1.0;
+          plant.growthAnimating = false;
+        }
       }
-
-      ctx.restore();
     }
   },
 
-  drawSprout(ctx, type, size, plant) {
-    // Pulsing sprout
-    const pulse = 1 + Math.sin(Game.time * 3 + plant.wobble) * 0.1;
-    const s = size * pulse;
-
-    // Stem
-    ctx.strokeStyle = '#66aa44';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(0, -s * 0.8);
-    ctx.stroke();
-
-    // Tiny leaf
-    ctx.fillStyle = type.color;
-    ctx.globalAlpha = 0.8;
-    ctx.beginPath();
-    ctx.ellipse(0, -s * 0.8, s * 0.3, s * 0.15, -0.3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-
-    // Glow pulse
-    ctx.fillStyle = type.glowColor;
-    ctx.beginPath();
-    ctx.arc(0, -s * 0.4, s * 0.5 * pulse, 0, Math.PI * 2);
-    ctx.fill();
+  // Hit-test: find plant near screen coordinates
+  // Returns plant or null. Checks all plants, returns closest to tap.
+  findPlantAt(screenX, screenY) {
+    let closest = null;
+    let closestDist = Infinity;
+    for (const plant of this.items) {
+      const pos = Camera.worldToScreen(plant.angle, plant.depth);
+      if (!pos.visible) continue;
+      const hitRadius = 35 * pos.scale;
+      const dx = screenX - pos.x;
+      const dy = screenY - (pos.y - hitRadius * 0.5); // center hitbox on plant body
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < hitRadius && dist < closestDist) {
+        closest = plant;
+        closestDist = dist;
+      }
+    }
+    return closest;
   },
 
-  drawBloomed(ctx, type, size, plant) {
-    const age = Game.time - plant.bloomTime;
-    const growScale = Math.min(1, age * 3); // grow in over 0.33s
-    const s = size * 1.5 * growScale;
-    const wobble = Math.sin(Game.time * 1.5 + plant.wobble) * 0.05;
-
-    ctx.rotate(wobble);
-
-    // Glow
-    const glowGrad = ctx.createRadialGradient(0, -s * 0.3, 0, 0, -s * 0.3, s * 1.2);
-    glowGrad.addColorStop(0, type.glowColor);
-    glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = glowGrad;
-    ctx.beginPath();
-    ctx.arc(0, -s * 0.3, s * 1.2, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Use the icon draw function scaled for the planet
-    type.icon(ctx, 0, -s * 0.3, s);
+  // Draw all plants, sorted by depth (furthest first)
+  // Returns array of { plant, x, y, scale } for depth-sorting in main.js render pipeline
+  getSortedDrawList() {
+    const list = [];
+    for (const plant of this.items) {
+      const pos = Camera.worldToScreen(plant.angle, plant.depth);
+      if (!pos.visible) continue;
+      list.push({ plant, x: pos.x, y: pos.y, scale: pos.scale });
+    }
+    return list;
   },
 
-  // Draw placement hints when a plant type is selected
+  // Draw a single plant at screen position
+  drawPlant(ctx, plant, x, y, scale) {
+    ctx.save();
+    ctx.translate(x, y);
+    PlantRenderer.draw(ctx, plant.typeIndex, plant.growthStage, plant.growthProgress, scale, Game.time);
+    ctx.restore();
+  },
+
+  // Draw placement hints when a type is selected
   drawPlacementHints(ctx) {
     if (this.selectedType < 0) return;
-
-    const hintCount = 8;
-    for (let i = 0; i < hintCount; i++) {
-      const angle = (i / hintCount) * Math.PI * 2;
-      const pos = Planet.surfacePoint(angle);
+    const time = Game.time;
+    // Show 8 pulsing circles on the ground surface
+    for (let i = 0; i < 8; i++) {
+      const angle = Camera.rotation + (i / 8 - 0.5) * Camera.visibleArc * 0.7;
+      const depth = 0.3 + (i % 3) * 0.2;
+      const pos = Camera.worldToScreen(angle, depth);
       if (!pos.visible) continue;
-
-      const pulse = 0.5 + Math.sin(Game.time * 2 + i) * 0.3;
+      const pulse = 0.7 + Math.sin(time * 3 + i) * 0.3;
+      const radius = 15 * pos.scale * pulse;
+      ctx.save();
+      ctx.globalAlpha = 0.15 + Math.sin(time * 2 + i * 0.7) * 0.1;
+      ctx.fillStyle = '#aaffaa';
       ctx.beginPath();
-      ctx.arc(pos.x, pos.y, Planet.radius * 0.06 * pos.scale, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255, 255, 200, ${pulse * 0.3})`;
+      ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = `rgba(255, 255, 200, ${pulse * 0.5})`;
-      ctx.lineWidth = 1;
-      ctx.stroke();
+      ctx.restore();
     }
-  },
-
-  // Find plant near a screen position
-  findPlantAt(screenX, screenY) {
-    for (const plant of this.items) {
-      const pos = Planet.surfacePoint(plant.angle);
-      if (!pos.visible) continue;
-      const dx = screenX - pos.x;
-      const dy = screenY - pos.y;
-      const hitSize = Planet.radius * 0.15 * pos.scale;
-      if (dx * dx + dy * dy < hitSize * hitSize * 4) {
-        return plant;
-      }
-    }
-    return null;
   },
 };
