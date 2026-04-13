@@ -1,324 +1,439 @@
-// Starlight Garden - Main Entry Point
+// main.js - Game loop, state machine, depth-sorted render pipeline, input wiring
+// This is the last file loaded. All modules are available as globals.
+// Depends on: ALL modules
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// Game state
 const Game = {
   width: 0,
   height: 0,
   time: 0,
   deltaTime: 0,
   lastTime: 0,
-  stars: [],
-  state: 'title', // 'title', 'transition', 'playing'
-  titleAlpha: 1,
+  state: 'title',          // 'title' | 'transition' | 'playing'
   transitionTimer: 0,
+  transitionDuration: 1.5,  // seconds for title->playing zoom
 };
 
-// Resize canvas to fill screen at device pixel ratio
 function resizeCanvas() {
   const dpr = window.devicePixelRatio || 1;
+  canvas.width = window.innerWidth * dpr;
+  canvas.height = window.innerHeight * dpr;
+  canvas.style.width = window.innerWidth + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   Game.width = window.innerWidth;
   Game.height = window.innerHeight;
-  canvas.width = Game.width * dpr;
-  canvas.height = Game.height * dpr;
-  canvas.style.width = Game.width + 'px';
-  canvas.style.height = Game.height + 'px';
-  ctx.scale(dpr, dpr);
+  Camera.resize(Game.width, Game.height);
+  Starfield.resize();
+  PlanetSurface.resize();
 }
 
-// Generate background stars
-function initStars() {
-  Game.stars = [];
-  for (let i = 0; i < 150; i++) {
-    Game.stars.push({
-      x: Math.random() * Game.width,
-      y: Math.random() * Game.height,
-      radius: Math.random() * 1.5 + 0.5,
-      alpha: Math.random() * 0.8 + 0.2,
-      twinkleSpeed: Math.random() * 2 + 1,
-      twinkleOffset: Math.random() * Math.PI * 2,
-    });
-  }
-}
-
-// Draw background gradient and stars
-function drawBackground() {
-  const grad = ctx.createRadialGradient(
-    Game.width / 2, Game.height / 2, 0,
-    Game.width / 2, Game.height / 2, Game.height
-  );
-  grad.addColorStop(0, '#1a1a4e');
-  grad.addColorStop(1, '#0a0a2e');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, Game.width, Game.height);
-
-  for (const star of Game.stars) {
-    const twinkle = Math.sin(Game.time * star.twinkleSpeed + star.twinkleOffset);
-    const alpha = star.alpha * (0.5 + 0.5 * twinkle);
-    ctx.beginPath();
-    ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255, 255, 240, ${alpha})`;
-    ctx.fill();
-  }
-}
-
-// Auto-save after any state change
 function autoSave() {
   Storage.save();
 }
 
-function drawTitleScreen() {
-  // Small planet in center
-  const scale = 0.5;
-  const origRadius = Planet.radius;
-  Planet.radius = origRadius * scale;
-  Planet.y = Game.height * 0.4;
-  Planet.draw(ctx);
-  Planet.radius = origRadius;
-  Planet.y = Game.height * 0.4;
+// --- Title Screen ---
+function drawTitleScreen(ctx) {
+  const w = Game.width;
+  const h = Game.height;
+  const time = Game.time;
 
-  // Pulsing play button (star shape below planet)
-  const pulse = 0.9 + Math.sin(Game.time * 2) * 0.1;
-  const btnX = Game.width / 2;
-  const btnY = Game.height * 0.65;
-  const btnSize = 40 * pulse;
+  // Space background
+  Starfield.draw(ctx);
 
-  // Button glow
-  const glow = ctx.createRadialGradient(btnX, btnY, 0, btnX, btnY, btnSize * 2);
-  glow.addColorStop(0, 'rgba(255, 230, 100, 0.5)');
-  glow.addColorStop(1, 'rgba(255, 230, 100, 0)');
-  ctx.fillStyle = glow;
+  // Curved horizon at bottom third
+  const horizonY = h * 0.65;
+  ctx.save();
+
+  // Ground preview
+  const grad = ctx.createLinearGradient(0, horizonY, 0, h);
+  grad.addColorStop(0, '#3a6b2a');
+  grad.addColorStop(0.3, '#2d5520');
+  grad.addColorStop(0.7, '#4a3a25');
+  grad.addColorStop(1, '#2a1e14');
+  ctx.fillStyle = grad;
   ctx.beginPath();
-  ctx.arc(btnX, btnY, btnSize * 2, 0, Math.PI * 2);
+  // Slightly wavy horizon
+  ctx.moveTo(0, h);
+  for (let x = 0; x <= w; x += 20) {
+    const bump = Math.sin(x * 0.02 + 1) * 8 + Math.sin(x * 0.05 + 3) * 4;
+    ctx.lineTo(x, horizonY + bump);
+  }
+  ctx.lineTo(w, h);
+  ctx.closePath();
   ctx.fill();
 
-  // Star button
-  ctx.fillStyle = '#ffdd44';
+  // Silhouette plants along horizon
+  ctx.fillStyle = 'rgba(20, 40, 15, 0.6)';
+  for (let i = 0; i < 8; i++) {
+    const px = w * 0.1 + i * w * 0.1;
+    const py = horizonY + Math.sin(px * 0.02 + 1) * 8;
+    ctx.save();
+    ctx.translate(px, py);
+    // Simple plant silhouette
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(-5, -15 - i * 3);
+    ctx.lineTo(5, -15 - i * 3);
+    ctx.closePath();
+    ctx.fill();
+    // Leaves
+    ctx.beginPath();
+    ctx.ellipse(-8, -10 - i * 2, 6, 3, -0.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(8, -12 - i * 2, 6, 3, 0.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.restore();
+
+  // Pulsing "tap to play" star in center
+  const pulse = 0.85 + Math.sin(time * 2.5) * 0.15;
+  const starSize = 35 * pulse;
+  const cx = w / 2;
+  const cy = h * 0.4;
+
+  // Star glow
+  const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, starSize * 3);
+  glow.addColorStop(0, 'rgba(255, 255, 200, 0.3)');
+  glow.addColorStop(1, 'rgba(255, 255, 200, 0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(cx, cy, starSize * 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Star shape
+  ctx.fillStyle = '#ffeeaa';
   ctx.beginPath();
   for (let i = 0; i < 5; i++) {
-    const outerAngle = (i / 5) * Math.PI * 2 - Math.PI / 2;
-    const innerAngle = outerAngle + Math.PI / 5;
-    ctx.lineTo(btnX + Math.cos(outerAngle) * btnSize, btnY + Math.sin(outerAngle) * btnSize);
-    ctx.lineTo(btnX + Math.cos(innerAngle) * btnSize * 0.45, btnY + Math.sin(innerAngle) * btnSize * 0.45);
+    const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+    const r = starSize;
+    const ri = starSize * 0.4;
+    ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+    const a2 = a + Math.PI / 5;
+    ctx.lineTo(cx + Math.cos(a2) * ri, cy + Math.sin(a2) * ri);
   }
   ctx.closePath();
   ctx.fill();
 
-  // Inner shine
-  ctx.fillStyle = '#fff8cc';
+  // White core
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
   ctx.beginPath();
-  ctx.arc(btnX, btnY, btnSize * 0.25, 0, Math.PI * 2);
+  ctx.arc(cx, cy, starSize * 0.25, 0, Math.PI * 2);
   ctx.fill();
 }
 
-function gameLoop(timestamp) {
-  const time = timestamp / 1000;
-  Game.deltaTime = Math.min(time - Game.lastTime, 0.1);
-  Game.lastTime = time;
-  Game.time = time;
+// --- Transition: zoom from title to playing ---
+function drawTransition(ctx) {
+  const progress = Game.transitionTimer / Game.transitionDuration;
+  const ease = progress * (2 - progress); // ease-out
 
-  ctx.clearRect(0, 0, Game.width, Game.height);
-  drawBackground();
+  // Blend from title horizon position to playing horizon
+  const titleHorizonY = Game.height * 0.65;
+  const playHorizonY = Camera.horizonY;
+  const currentHorizon = titleHorizonY + (playHorizonY - titleHorizonY) * ease;
 
-  if (Game.state === 'title') {
-    Planet.update(Game.deltaTime);
-    drawTitleScreen();
-    Particles.update(Game.deltaTime);
-    Particles.draw(ctx);
-    requestAnimationFrame(gameLoop);
-    return;
+  // Draw starfield (fades/shifts as camera descends)
+  Starfield.draw(ctx);
+
+  // Ground expands upward
+  const grad = ctx.createLinearGradient(0, currentHorizon, 0, Game.height);
+  grad.addColorStop(0, '#3a6b2a');
+  grad.addColorStop(0.3, '#2d5520');
+  grad.addColorStop(0.7, '#4a3a25');
+  grad.addColorStop(1, '#2a1e14');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, currentHorizon, Game.width, Game.height - currentHorizon);
+
+  // Fade to white at end of transition
+  if (progress > 0.7) {
+    ctx.save();
+    ctx.globalAlpha = (progress - 0.7) / 0.3;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, Game.width, Game.height);
+    ctx.restore();
   }
-
-  if (Game.state === 'transition') {
-    Game.transitionTimer += Game.deltaTime;
-    const t = Math.min(1, Game.transitionTimer);
-    const ease = 1 - Math.pow(1 - t, 3);
-    Planet.radius = Math.min(Game.width, Game.height) * (0.125 + ease * 0.125);
-    Planet.update(Game.deltaTime);
-    Planet.draw(ctx);
-    Particles.update(Game.deltaTime);
-    Particles.draw(ctx);
-
-    if (t >= 1) {
-      Game.state = 'playing';
-      Planet.resize();
-      UI.init();
-    }
-    requestAnimationFrame(gameLoop);
-    return;
-  }
-
-  // Playing state
-  ShootingStars.update(Game.deltaTime);
-  Planet.update(Game.deltaTime);
-  Animals.update(Game.deltaTime);
-  Rewards.update(Game.deltaTime);
-
-  Planet.draw(ctx);
-  Decorations.draw(ctx);
-  Plants.drawPlacementHints(ctx);
-  Plants.draw(ctx);
-  Animals.draw(ctx);
-  Decorations.drawAccessories(ctx);
-
-  for (const plant of Plants.items) {
-    if (plant.state === 'bloomed') {
-      const pos = Planet.surfacePoint(plant.angle);
-      if (pos.visible) {
-        Particles.emitAmbient(pos.x, pos.y, PlantTypes[plant.typeIndex].glowColor);
-      }
-    }
-  }
-
-  ShootingStars.draw(ctx);
-  Rewards.draw(ctx);
-  Particles.update(Game.deltaTime);
-  Particles.draw(ctx);
-
-  requestAnimationFrame(gameLoop);
 }
 
-function init() {
-  resizeCanvas();
-  initStars();
-  Planet.init();
-  Input.init();
+// --- Playing State Render Pipeline ---
+function drawPlaying(ctx) {
+  // 1. Clear
+  ctx.clearRect(0, 0, Game.width, Game.height);
 
-  // Check for saved game
-  if (Storage.hasSave()) {
-    Storage.load();
-    Game.state = 'playing';
-    UI.init();
-    UI.refreshGardenTray();
-  } else {
-    Game.state = 'title';
+  // 2. Sky background (starfield above horizon)
+  Starfield.draw(ctx);
+
+  // 3. Ground below horizon
+  PlanetSurface.draw(ctx);
+
+  // 4. Collect all surface objects for depth sorting
+  const surfaceObjects = [];
+
+  // Plants
+  const plantList = Plants.getSortedDrawList();
+  for (const item of plantList) {
+    surfaceObjects.push({
+      y: item.y,
+      depth: item.plant.depth,
+      type: 'plant',
+      data: item,
+    });
   }
 
+  // Animals
+  const animalList = Animals.getSortedDrawList();
+  for (const item of animalList) {
+    surfaceObjects.push({
+      y: item.y,
+      depth: item.animal.depth,
+      type: 'animal',
+      data: item,
+    });
+  }
+
+  // Decorations
+  const decoList = Decorations.getSortedDrawList();
+  for (const item of decoList) {
+    surfaceObjects.push({
+      y: item.y,
+      depth: item.deco.depth,
+      type: 'decoration',
+      data: item,
+    });
+  }
+
+  // 5. Sort by depth (furthest first = smallest depth = near horizon)
+  surfaceObjects.sort((a, b) => a.depth - b.depth);
+
+  // 6. Draw each object back-to-front
+  for (const obj of surfaceObjects) {
+    switch (obj.type) {
+      case 'plant':
+        Plants.drawPlant(ctx, obj.data.plant, obj.data.x, obj.data.y, obj.data.scale);
+        break;
+      case 'animal':
+        Animals.drawAnimal(ctx, obj.data.animal, obj.data.x, obj.data.y, obj.data.scale);
+        break;
+      case 'decoration':
+        Decorations.drawDecoration(ctx, obj.data.deco, obj.data.x, obj.data.y, obj.data.scale);
+        break;
+    }
+  }
+
+  // Plant placement hints (on top of ground objects)
+  Plants.drawPlacementHints(ctx);
+
+  // 7. Shooting stars & water droplet (in sky, on top of everything below)
+  ShootingStars.draw(ctx);
+
+  // 8. Gift stars
+  Rewards.draw(ctx);
+
+  // 9. Particles on top of everything
+  Particles.draw(ctx);
+
+  // Ambient sparkle for bloomed plants
+  for (const item of plantList) {
+    if (item.plant.growthStage >= 4) {
+      const colors = PlantTypes[item.plant.typeIndex].bloomColors;
+      Particles.emitAmbient(item.x, item.y, colors[0]);
+    }
+  }
+}
+
+// --- Game Loop ---
+function gameLoop(timestamp) {
+  requestAnimationFrame(gameLoop);
+
+  if (Game.lastTime === 0) Game.lastTime = timestamp;
+  const rawDt = (timestamp - Game.lastTime) / 1000;
+  Game.deltaTime = Math.min(rawDt, 0.1); // cap at 100ms
+  Game.lastTime = timestamp;
+  Game.time += Game.deltaTime;
+
+  const dt = Game.deltaTime;
+
+  ctx.clearRect(0, 0, Game.width, Game.height);
+
+  if (Game.state === 'title') {
+    Starfield.update(dt);
+    drawTitleScreen(ctx);
+  } else if (Game.state === 'transition') {
+    Game.transitionTimer += dt;
+    Starfield.update(dt);
+    drawTransition(ctx);
+    if (Game.transitionTimer >= Game.transitionDuration) {
+      Game.state = 'playing';
+    }
+  } else if (Game.state === 'playing') {
+    // Update all systems
+    Camera.update(dt);
+    Starfield.update(dt);
+    ShootingStars.update(dt);
+    Plants.update(dt);
+    Animals.update(dt);
+    Rewards.update(dt);
+    Particles.update(dt);
+
+    // Draw
+    drawPlaying(ctx);
+  }
+}
+
+// --- Input Wiring ---
+function initInput() {
+  // TAP
   Input.onTap = (x, y) => {
-    GameAudio.init();
+    GameAudio.ensure();
 
     if (Game.state === 'title') {
       Game.state = 'transition';
       Game.transitionTimer = 0;
+      GameAudio.init();
       return;
     }
 
     if (Game.state !== 'playing') return;
 
-    // If in accessory mode, tapping planet background dismisses it
-    if (UI.currentTray === 'accessory') {
-      if (!Animals.handleTap(x, y)) {
-        UI.hideAccessoryTray();
-      }
-      return;
-    }
-
-    // Check gift stars first
+    // Priority 1: Gift stars
     if (Rewards.handleTap(x, y)) {
-      UI.refreshGardenTray();
       autoSave();
+      UI.refreshGardenTray();
       return;
     }
 
-    // Check shooting stars
-    const starIndex = ShootingStars.hitTest(x, y);
-    if (starIndex >= 0) {
-      ShootingStars.catchStar(starIndex);
-      GameAudio.playStarCatch();
-      Particles.emit(x, y, { count: 12, color: '#ffffaa', speed: 60, life: 0.4, size: 3 });
-      return;
-    }
-
-    // Check animals
+    // Priority 2: Animals (show accessory tray)
     const animal = Animals.handleTap(x, y);
     if (animal) {
-      if (Rewards.getUnlockedByType('accessory').length > 0) {
-        UI.showAccessoryTray(animal);
-      }
+      UI.showAccessoryTray(animal);
       return;
     }
 
-    // Place decoration
-    if (UI.selectedDecoration && Planet.hitTest(x, y)) {
-      const angle = Planet.screenToSurfaceAngle(x, y);
-      Decorations.placeDecoration(UI.selectedDecoration, angle);
-      GameAudio.playAccessoryPlace();
-      const pos = Planet.surfacePoint(angle);
-      Particles.emit(pos.x, pos.y, { count: 6, color: '#ffffcc', speed: 25, life: 0.4, size: 2 });
-      UI.selectedDecoration = null;
-      UI.trayItems.forEach(btn => btn.classList.remove('selected'));
-      autoSave();
-      return;
-    }
-
-    // Place plant
-    if (Plants.selectedType >= 0 && Planet.hitTest(x, y)) {
-      const typeIndex = Plants.selectedType;
-      const angle = Planet.screenToSurfaceAngle(x, y);
-      Plants.addPlant(typeIndex, angle);
-      GameAudio.playPlantPop();
-      const pos = Planet.surfacePoint(angle);
-      Particles.emit(pos.x, pos.y, { count: 8, color: PlantTypes[typeIndex].color, speed: 30, life: 0.5, size: 3 });
-      Plants.selectedType = -1;
-      UI.trayItems.forEach(btn => btn.classList.remove('selected'));
-      autoSave();
-      return;
-    }
-  };
-
-  Input.onDragStart = (x, y) => {
-    if (Game.state !== 'playing') return;
-    const starIndex = ShootingStars.hitTest(x, y);
-    if (starIndex >= 0) {
-      ShootingStars.catchStar(starIndex);
-      GameAudio.playStarCatch();
-      GameAudio.startDragShimmer();
-      Particles.emit(x, y, { count: 12, color: '#ffffaa', speed: 60, life: 0.4, size: 3 });
-    }
-  };
-
-  Input.onDragMove = (x, y, dx, dy) => {
-    if (Game.state !== 'playing') return;
-    if (ShootingStars.isDraggingDroplet) {
-      ShootingStars.moveDroplet(x, y);
-    } else if (Planet.hitTest(x, y)) {
-      Planet.rotationVelocity = dx * 0.01;
-    }
-  };
-
-  Input.onDragEnd = (x, y, velX, velY) => {
-    if (Game.state !== 'playing') return;
-    if (ShootingStars.isDraggingDroplet) {
-      GameAudio.stopDragShimmer();
-      const plant = ShootingStars.releaseDroplet(x, y);
-      if (plant) {
-        Plants.bloomPlant(plant);
-        const pos = Planet.surfacePoint(plant.angle);
-        GameAudio.playBloom(plant.typeIndex);
-        Particles.emitBloom(pos.x, pos.y, PlantTypes[plant.typeIndex].bloomColors);
-        Rewards.onBloom();
+    // Priority 3: Place decoration
+    if (UI.selectedDecoration && Camera.isOnGround(x, y)) {
+      const world = Camera.screenToWorld(x, y);
+      if (world) {
+        Decorations.placeDecoration(UI.selectedDecoration, world.angle, world.depth);
+        GameAudio.playDecorationPlace();
+        UI.selectedDecoration = null;
+        UI.refreshGardenTray();
         autoSave();
       }
+      return;
+    }
+
+    // Priority 4: Plant seed
+    if (Plants.selectedType >= 0 && Camera.isOnGround(x, y)) {
+      const world = Camera.screenToWorld(x, y);
+      if (world) {
+        Plants.addPlant(Plants.selectedType, world.angle, world.depth);
+        GameAudio.playPlantPop();
+        autoSave();
+      }
+      return;
+    }
+
+    // Priority 5: Tap on sky shooting star
+    if (Camera.isInSky(x, y)) {
+      const starIdx = ShootingStars.hitTest(x, y);
+      if (starIdx >= 0) {
+        ShootingStars.catchStar(starIdx);
+      }
     }
   };
 
-  Input.onSwipe = (velX, velY) => {
+  // DRAG START
+  Input.onDragStart = (x, y) => {
     if (Game.state !== 'playing') return;
-    if (!ShootingStars.isDraggingDroplet) {
-      GameAudio.ensure();
-      Planet.spin(velX);
-      GameAudio.playSpinWhoosh(velX);
+
+    // Try to catch a shooting star
+    const starIdx = ShootingStars.hitTest(x, y);
+    if (starIdx >= 0) {
+      ShootingStars.catchStar(starIdx);
     }
   };
 
-  window.addEventListener('resize', () => {
-    resizeCanvas();
-    initStars();
-    Planet.resize();
-  });
-  Game.lastTime = performance.now() / 1000;
+  // DRAG MOVE
+  Input.onDragMove = (x, y, dx, dy) => {
+    if (Game.state !== 'playing') return;
+
+    if (ShootingStars.isDraggingDroplet) {
+      ShootingStars.moveDroplet(x, y);
+    } else {
+      // Rotate camera
+      Camera.spin(-dx);
+    }
+  };
+
+  // DRAG END
+  Input.onDragEnd = (x, y) => {
+    if (Game.state !== 'playing') return;
+
+    if (ShootingStars.isDraggingDroplet) {
+      const result = ShootingStars.releaseDroplet(x, y);
+      if (result && result.plant) {
+        const watered = Plants.waterPlant(result.plant);
+        if (watered) {
+          // Check if plant just bloomed (reached stage 4)
+          if (result.plant.growthStage >= 4) {
+            // Bloom effects
+            const pos = Camera.worldToScreen(result.plant.angle, result.plant.depth);
+            const bloomColors = PlantTypes[result.plant.typeIndex].bloomColors;
+            Particles.emitBloom(pos.x, pos.y, bloomColors);
+            GameAudio.playBloom(result.plant.typeIndex);
+
+            // Special effects for mushroom spores
+            if (result.plant.typeIndex === 3) {
+              Particles.emitSpores(pos.x, pos.y);
+            }
+            // Special effects for firework flower sparks
+            if (result.plant.typeIndex === 6) {
+              Particles.emitSparks(pos.x, pos.y);
+            }
+
+            Rewards.onBloom();
+            UI.refreshGardenTray();
+          } else {
+            // Growth sound (not bloom)
+            GameAudio.playGrowth();
+          }
+          autoSave();
+        }
+      }
+    }
+  };
+
+  // SWIPE
+  Input.onSwipe = (dx, dy) => {
+    if (Game.state !== 'playing') return;
+    Camera.spin(-dx * 2);
+    GameAudio.playSpinWhoosh(Math.abs(dx));
+  };
+}
+
+// --- Init ---
+function init() {
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  // Initialize systems
+  Starfield.init(Game.width, Game.height);
+  PlanetSurface.init(Game.width, Game.height);
+  Input.init(canvas);
+  initInput();
+
+  // Load save
+  if (Storage.hasSave()) {
+    Storage.load();
+  }
+
+  UI.init();
+
+  // Start game loop
   requestAnimationFrame(gameLoop);
 }
 
