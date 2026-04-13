@@ -8,7 +8,7 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #0a0a2e;
+  background: #050510;
   touch-action: none;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
@@ -37,33 +37,34 @@ html, body {
   pointer-events: auto;
 }
 
-/* Garden Tray */
+/* Garden Tray — sits at bottom, earthy gradient */
 .tray {
   position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 120px;
+  height: 110px;
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 12px;
-  padding: 10px 20px;
-  background: linear-gradient(to top, rgba(10, 10, 46, 0.95), rgba(10, 10, 46, 0.7), transparent);
+  gap: 10px;
+  padding: 8px 16px;
+  background: linear-gradient(to top, rgba(30, 20, 10, 0.95), rgba(30, 20, 10, 0.6), transparent);
 }
 
 .tray-item {
   width: 80px;
   height: 80px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 3px solid rgba(255, 255, 255, 0.15);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid rgba(255, 255, 255, 0.12);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: transform 0.2s, border-color 0.2s, background 0.2s;
   -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
 }
 
 .tray-item:active {
@@ -71,10 +72,10 @@ html, body {
 }
 
 .tray-item.selected {
-  border-color: rgba(255, 255, 200, 0.8);
-  background: rgba(255, 255, 200, 0.15);
+  border-color: rgba(180, 255, 150, 0.8);
+  background: rgba(180, 255, 150, 0.12);
   transform: scale(1.08);
-  box-shadow: 0 0 20px rgba(255, 255, 200, 0.3);
+  box-shadow: 0 0 18px rgba(180, 255, 150, 0.25);
 }
 
 .tray-item canvas {
@@ -84,5 +85,14 @@ html, body {
 }
 
 #accessory-tray {
-  background: linear-gradient(to top, rgba(40, 20, 60, 0.95), rgba(30, 15, 50, 0.7), transparent);
+  background: linear-gradient(to top, rgba(40, 20, 50, 0.95), rgba(30, 15, 40, 0.6), transparent);
+}
+
+/* Scrollable tray for many items */
+.tray {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  justify-content: flex-start;
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
 }
