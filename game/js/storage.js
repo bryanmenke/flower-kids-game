@@ -12,6 +12,7 @@ const Storage = {
         angle: p.angle,
         depth: p.depth,
         growthStage: p.growthStage,
+        colorIndex: p.colorIndex,
       })),
       animals: Animals.items.filter(a => a.settled).map(a => ({
         typeIndex: a.typeIndex,
@@ -65,6 +66,7 @@ const Storage = {
         growthProgress: 1.0, // fully settled on load
         growthAnimating: false,
         plantedTime: 0,
+        colorIndex: p.colorIndex != null ? p.colorIndex : Math.floor(Math.random() * 10),
       }));
 
       // Restore animals

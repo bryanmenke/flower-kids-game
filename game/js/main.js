@@ -236,6 +236,29 @@ function drawPlaying(ctx) {
   // 9. Particles on top of everything
   Particles.draw(ctx);
 
+  // 10. Long-press removal progress indicator (plants or decorations)
+  if ((_longPressPlant || _longPressDeco) && !_longPressFired && Input.isDown) {
+    const elapsed = performance.now() - _longPressStartTime;
+    const progress = Math.min(1, elapsed / LONG_PRESS_DURATION);
+    const target = _longPressPlant || _longPressDeco;
+    const pos = Camera.worldToScreen(target.angle, target.depth);
+    if (pos.visible) {
+      const radius = 200 * pos.scale;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 100, 100, 0.6)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y - radius * 0.5, radius, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2);
+      ctx.stroke();
+      // Pulsing red tint on the area
+      ctx.fillStyle = `rgba(255, 80, 80, ${0.1 + progress * 0.15})`;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y - radius * 0.5, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
   // Ambient sparkle for bloomed plants
   for (const item of plantList) {
     if (item.plant.growthStage >= 4) {
@@ -279,12 +302,67 @@ function gameLoop(timestamp) {
     Rewards.update(dt);
     Particles.update(dt);
 
+    // Check long-press removal (plants or decorations, 2 seconds)
+    if ((_longPressPlant || _longPressDeco) && !_longPressFired && Input.isDown) {
+      const elapsed = performance.now() - _longPressStartTime;
+      if (elapsed >= LONG_PRESS_DURATION) {
+        if (_longPressPlant) {
+          const pos = Camera.worldToScreen(_longPressPlant.angle, _longPressPlant.depth);
+          if (pos.visible) {
+            Particles.emit(pos.x, pos.y, {
+              count: 12,
+              colors: ['#88ff88', '#ffffff', '#aaddaa'],
+              speed: 60,
+              life: 0.8,
+              size: 4,
+              gravity: 20,
+              spread: Math.PI * 2,
+              angle: -Math.PI / 2,
+            });
+          }
+          Plants.removePlant(_longPressPlant);
+        } else if (_longPressDeco) {
+          const pos = Camera.worldToScreen(_longPressDeco.angle, _longPressDeco.depth);
+          if (pos.visible) {
+            Particles.emit(pos.x, pos.y, {
+              count: 12,
+              colors: ['#ffaacc', '#ffffff', '#ddbbff'],
+              speed: 60,
+              life: 0.8,
+              size: 4,
+              gravity: 20,
+              spread: Math.PI * 2,
+              angle: -Math.PI / 2,
+            });
+          }
+          Decorations.removeDecoration(_longPressDeco);
+        }
+        _longPressFired = true;
+        _longPressPlant = null;
+        _longPressDeco = null;
+        autoSave();
+      }
+    }
+
     // Draw
     drawPlaying(ctx);
   }
 }
 
 // --- Input Wiring ---
+// Interaction state for drag-animal and long-press-to-remove
+let _draggingAnimal = null;      // animal being dragged, or null
+let _draggingAnimalOffX = 0;     // screen offset from animal center to touch point
+let _draggingAnimalOffY = 0;
+let _longPressPlant = null;      // plant under finger for long-press removal
+let _longPressDeco = null;       // decoration under finger for long-press removal
+let _longPressStartTime = 0;     // performance.now() when press started
+let _longPressStartX = 0;
+let _longPressStartY = 0;
+let _longPressFired = false;     // true once the removal has triggered
+const LONG_PRESS_DURATION = 2000;  // ms
+const LONG_PRESS_MOVE_THRESHOLD = 20; // px — cancel if finger moves more than this
+
 function initInput() {
   // TAP
   Input.onTap = (x, y) => {
@@ -298,6 +376,9 @@ function initInput() {
     }
 
     if (Game.state !== 'playing') return;
+
+    // If long-press already fired, consume this tap
+    if (_longPressFired) return;
 
     // Priority 1: Gift stars
     if (Rewards.handleTap(x, y)) {
@@ -350,10 +431,44 @@ function initInput() {
   Input.onDragStart = (x, y) => {
     if (Game.state !== 'playing') return;
 
-    // Try to catch a shooting star
+    _draggingAnimal = null;
+    _longPressPlant = null;
+    _longPressDeco = null;
+    _longPressFired = false;
+
+    // Priority 1: Try to catch a shooting star
     const starIdx = ShootingStars.hitTest(x, y);
     if (starIdx >= 0) {
       ShootingStars.catchStar(starIdx);
+      return;
+    }
+
+    // Priority 2: Try to grab an animal for dragging
+    const animal = Animals.findAnimalAt(x, y);
+    if (animal) {
+      _draggingAnimal = animal;
+      const pos = Camera.worldToScreen(animal.angle, animal.depth);
+      _draggingAnimalOffX = pos.x - x;
+      _draggingAnimalOffY = pos.y - y;
+      return;
+    }
+
+    // Priority 3: Start long-press tracking on a plant or decoration
+    const plant = Plants.findPlantAt(x, y);
+    if (plant) {
+      _longPressPlant = plant;
+      _longPressStartTime = performance.now();
+      _longPressStartX = x;
+      _longPressStartY = y;
+      return;
+    }
+
+    const deco = Decorations.findDecorationAt(x, y);
+    if (deco) {
+      _longPressDeco = deco;
+      _longPressStartTime = performance.now();
+      _longPressStartX = x;
+      _longPressStartY = y;
     }
   };
 
@@ -363,7 +478,26 @@ function initInput() {
 
     if (ShootingStars.isDraggingDroplet) {
       ShootingStars.moveDroplet(x, y);
+    } else if (_draggingAnimal) {
+      // Move the animal to follow the finger (convert screen to world)
+      const targetX = x + _draggingAnimalOffX;
+      const targetY = y + _draggingAnimalOffY;
+      if (Camera.isOnGround(targetX, targetY)) {
+        const world = Camera.screenToWorld(targetX, targetY);
+        if (world) {
+          Animals.moveAnimalTo(_draggingAnimal, world.angle, world.depth);
+        }
+      }
     } else {
+      // Cancel long-press if finger moved too far
+      if (_longPressPlant || _longPressDeco) {
+        const ldx = x - _longPressStartX;
+        const ldy = y - _longPressStartY;
+        if (Math.sqrt(ldx * ldx + ldy * ldy) > LONG_PRESS_MOVE_THRESHOLD) {
+          _longPressPlant = null;
+          _longPressDeco = null;
+        }
+      }
       // Rotate camera
       Camera.spin(-dx);
     }
@@ -404,12 +538,31 @@ function initInput() {
           autoSave();
         }
       }
+    } else if (_draggingAnimal) {
+      // Place animal at final position
+      const targetX = x + _draggingAnimalOffX;
+      const targetY = y + _draggingAnimalOffY;
+      if (Camera.isOnGround(targetX, targetY)) {
+        const world = Camera.screenToWorld(targetX, targetY);
+        if (world) {
+          Animals.moveAnimalTo(_draggingAnimal, world.angle, world.depth);
+        }
+      }
+      _draggingAnimal = null;
+      autoSave();
     }
+
+    // Clear long-press state
+    _longPressPlant = null;
+    _longPressDeco = null;
+    _longPressFired = false;
   };
 
   // SWIPE
   Input.onSwipe = (dx, dy) => {
     if (Game.state !== 'playing') return;
+    // Don't swipe while dragging an animal
+    if (_draggingAnimal) return;
     Camera.spin(-dx * 2);
     GameAudio.playSpinWhoosh(Math.abs(dx));
   };

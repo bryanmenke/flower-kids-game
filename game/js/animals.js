@@ -89,36 +89,50 @@ const Animals = {
 
   // Handle tap on animal — returns animal if hit, null if miss
   handleTap(screenX, screenY) {
+    const animal = this.findAnimalAt(screenX, screenY);
+    if (!animal) return null;
+    // Cycle through 3 tap sounds: 0, 1, 2, 0, 1, 2, ...
+    const soundIndex = animal.tapCount % 3;
+    GameAudio.playAnimalTap(animal.typeIndex, soundIndex);
+    animal.tapCount++;
+    animal.idleTimer = 0; // reset idle to trigger fresh animation
+    // Emit particles
+    const pos = Camera.worldToScreen(animal.angle, animal.depth);
+    Particles.emit(pos.x, pos.y - 350 * pos.scale * 0.5, {
+      count: 6,
+      colors: [AnimalTypes[animal.typeIndex].color, '#ffffff', '#ffddaa'],
+      speed: 40,
+      life: 0.5,
+      size: 3,
+      gravity: 15,
+      spread: Math.PI,
+      angle: -Math.PI / 2,
+    });
+    return animal;
+  },
+
+  // Hit-test: find animal near screen coordinates (no side effects)
+  findAnimalAt(screenX, screenY) {
     for (let i = this.items.length - 1; i >= 0; i--) {
       const animal = this.items[i];
       const pos = Camera.worldToScreen(animal.angle, animal.depth);
       if (!pos.visible) continue;
-      const hitRadius = 90 * pos.scale;
+      const hitRadius = 350 * pos.scale;
       const dx = screenX - pos.x;
       const dy = screenY - (pos.y - hitRadius * 0.3);
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < hitRadius) {
-        // Cycle through 3 tap sounds: 0, 1, 2, 0, 1, 2, ...
-        const soundIndex = animal.tapCount % 3;
-        GameAudio.playAnimalTap(animal.typeIndex, soundIndex);
-        animal.tapCount++;
-        animal.idleTimer = 0; // reset idle to trigger fresh animation
-
-        // Emit particles
-        Particles.emit(pos.x, pos.y - hitRadius * 0.5, {
-          count: 6,
-          colors: [AnimalTypes[animal.typeIndex].color, '#ffffff', '#ffddaa'],
-          speed: 40,
-          life: 0.5,
-          size: 3,
-          gravity: 15,
-          spread: Math.PI,
-          angle: -Math.PI / 2,
-        });
-        return animal;
-      }
+      if (dist < hitRadius) return animal;
     }
     return null;
+  },
+
+  // Move animal to new world position
+  moveAnimalTo(animal, angle, depth) {
+    animal.angle = angle;
+    animal.depth = depth;
+    animal.targetAngle = angle;
+    animal.targetDepth = depth;
+    animal.settled = true;
   },
 
   // Get draw list for depth-sorting in main.js

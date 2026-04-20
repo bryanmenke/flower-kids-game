@@ -1,14 +1,19 @@
-// Rewards - Colored gift stars, 19-item reward pool, unlock tracking
+// Rewards - Colored gift stars, reward pool, unlock tracking
 // Depends on: Camera, Game, Particles, GameAudio
 
 const RewardPool = {
   items: [
-    // Decorations (5) — magenta gift star
-    { id: 'deco_bridge',   type: 'decoration', itemId: 'bridge',   color: '#ff44aa' },
-    { id: 'deco_lantern',  type: 'decoration', itemId: 'lantern',  color: '#ff44aa' },
-    { id: 'deco_pond',     type: 'decoration', itemId: 'pond',     color: '#ff44aa' },
-    { id: 'deco_arch',     type: 'decoration', itemId: 'arch',     color: '#ff44aa' },
-    { id: 'deco_tower',    type: 'decoration', itemId: 'tower',    color: '#ff44aa' },
+    // Decorations (10) — magenta gift star
+    { id: 'deco_fairy_house',      type: 'decoration', itemId: 'fairy_house',      color: '#ff44aa' },
+    { id: 'deco_rainbow_arch',     type: 'decoration', itemId: 'rainbow_arch',     color: '#ff44aa' },
+    { id: 'deco_crystal_pond',     type: 'decoration', itemId: 'crystal_pond',     color: '#ff44aa' },
+    { id: 'deco_unicorn_statue',   type: 'decoration', itemId: 'unicorn_statue',   color: '#ff44aa' },
+    { id: 'deco_princess_tower',   type: 'decoration', itemId: 'princess_tower',   color: '#ff44aa' },
+    { id: 'deco_magic_wand',       type: 'decoration', itemId: 'magic_wand',       color: '#ff44aa' },
+    { id: 'deco_butterfly_garden', type: 'decoration', itemId: 'butterfly_garden', color: '#ff44aa' },
+    { id: 'deco_treasure_chest',   type: 'decoration', itemId: 'treasure_chest',   color: '#ff44aa' },
+    { id: 'deco_flower_swing',     type: 'decoration', itemId: 'flower_swing',     color: '#ff44aa' },
+    { id: 'deco_wishing_well',     type: 'decoration', itemId: 'wishing_well',     color: '#ff44aa' },
     // Accessories (12) — cyan gift star
     { id: 'acc_crown',       type: 'accessory', itemId: 'crown',       color: '#44ddff' },
     { id: 'acc_bow',         type: 'accessory', itemId: 'bow',         color: '#44ddff' },
@@ -22,9 +27,6 @@ const RewardPool = {
     { id: 'acc_butterfly',   type: 'accessory', itemId: 'butterfly',   color: '#44ddff' },
     { id: 'acc_backpack',    type: 'accessory', itemId: 'backpack',    color: '#44ddff' },
     { id: 'acc_halo',        type: 'accessory', itemId: 'halo',        color: '#44ddff' },
-    // Rare seeds (2) — gold with rainbow shimmer
-    { id: 'seed_rainbowTree',    type: 'seed', itemId: 'rainbowTree',    color: '#ffdd44' },
-    { id: 'seed_fireworkFlower',  type: 'seed', itemId: 'fireworkFlower', color: '#ffdd44' },
   ],
 };
 
@@ -57,10 +59,6 @@ const Rewards = {
     } else if (reward.type === 'accessory') {
       starColor = '#44ddff';
       glowColor = 'rgba(68, 221, 255, 0.3)';
-    } else {
-      // seed — gold
-      starColor = '#ffdd44';
-      glowColor = 'rgba(255, 221, 68, 0.3)';
     }
 
     const x = Camera.width * 0.2 + Math.random() * Camera.width * 0.6;
@@ -70,7 +68,7 @@ const Rewards = {
       x,
       y: -40,          // start above screen
       targetY,
-      size: 50,         // 3x scale
+      size: 80,         // large gift star
       age: 0,
       opened: false,
       openAnim: 0,
@@ -190,31 +188,6 @@ const Rewards = {
     ctx.arc(-s * 0.15, -s * 0.15, s * 0.3, 0, Math.PI * 2);
     ctx.fill();
 
-    // Rainbow shimmer for seed rewards
-    if (star.reward && star.reward.type === 'seed') {
-      const hue = (time * 60) % 360;
-      ctx.globalAlpha = 0.3;
-      ctx.strokeStyle = `hsl(${hue}, 80%, 60%)`;
-      ctx.lineWidth = s * 0.15;
-      ctx.beginPath();
-      for (let i = 0; i < 5; i++) {
-        const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
-        const r = s * pulse * 1.1;
-        const ri = s * 0.5 * pulse;
-        const outerX = Math.cos(a) * r;
-        const outerY = Math.sin(a) * r;
-        const a2 = a + Math.PI / 5;
-        const innerX = Math.cos(a2) * ri;
-        const innerY = Math.sin(a2) * ri;
-        if (i === 0) ctx.moveTo(outerX, outerY);
-        else ctx.lineTo(outerX, outerY);
-        ctx.lineTo(innerX, innerY);
-      }
-      ctx.closePath();
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-    }
-
     ctx.restore();
   },
 
@@ -253,19 +226,14 @@ const Rewards = {
       }
       ctx.closePath();
       ctx.fill();
-    } else if (star.reward.type === 'accessory') {
-      // Diamond shape icon
+    } else {
+      // Diamond shape icon for accessories
       ctx.beginPath();
       ctx.moveTo(x, y - s * 0.5);
       ctx.lineTo(x + s * 0.35, y);
       ctx.lineTo(x, y + s * 0.5);
       ctx.lineTo(x - s * 0.35, y);
       ctx.closePath();
-      ctx.fill();
-    } else {
-      // Seed: circle with glow
-      ctx.beginPath();
-      ctx.arc(x, y, s * 0.35, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -278,7 +246,7 @@ const Rewards = {
       if (star.opened) continue;
       const dx = x - star.x;
       const dy = y - star.y;
-      if (dx * dx + dy * dy < 90 * 90) {
+      if (dx * dx + dy * dy < 130 * 130) {
         this.openGiftStar(star);
         return true;
       }

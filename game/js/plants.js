@@ -2,14 +2,16 @@
 // Depends on: Camera, PlantRenderer, Game
 
 const PlantTypes = [
-  { id: 'roseBush',       name: 'Rose Bush',        bloomColors: ['#cc3355', '#ff6688', '#ee4466', '#ffaacc', '#ffffff'] },
-  { id: 'sunflower',      name: 'Sunflower',        bloomColors: ['#ffcc22', '#ffdd44', '#eeaa00', '#ffee66', '#ffffff'] },
-  { id: 'tulipCluster',   name: 'Tulip Cluster',    bloomColors: ['#ff2244', '#ffdd00', '#ff69b4', '#9933cc', '#ff6600'] },
-  { id: 'daisyPatch',     name: 'Daisy Patch',      bloomColors: ['#ffffff', '#ffff66', '#88dd44', '#ffccee', '#aaeeff'] },
-  { id: 'lavender',       name: 'Lavender',         bloomColors: ['#9966cc', '#bb88dd', '#7744aa', '#ddbbff', '#ffffff'] },
-  // Rare types — unlocked via seed rewards
-  { id: 'rainbowTree',    name: 'Rainbow Tree',     bloomColors: ['#ff4444', '#ff8844', '#ffcc44', '#44cc44', '#4488ff', '#8844cc'], seedId: 'seed_rainbowTree' },
-  { id: 'fireworkFlower',  name: 'Firework Flower', bloomColors: ['#ff4422', '#ff8844', '#ffcc22', '#ffffff', '#ffee88'], seedId: 'seed_fireworkFlower' },
+  { id: 'rose',       name: 'Rose',       bloomColors: ['#cc1133','#ff6699','#f5f0e8','#ffcc22','#ff6644','#990022','#ff88bb','#ffaa44','#dd55aa','#eeddff'] },
+  { id: 'tulip',      name: 'Tulip',      bloomColors: ['#dd1133','#ffcc00','#ff66aa','#7733bb','#ff6622','#f0e8e0','#ff3366','#ee8844','#44aacc','#aabb44'] },
+  { id: 'lily',       name: 'Lily',       bloomColors: ['#ffffff','#ff8866','#ffccaa','#ff55aa','#eedd44','#dd88cc','#ffaa88','#cc99ff','#88ddaa','#ff6666'] },
+  { id: 'orchid',     name: 'Orchid',     bloomColors: ['#cc44cc','#ffffff','#ff88dd','#8855cc','#ffaa55','#44bbaa','#ff66aa','#ddaaff','#ff4466','#88ccff'] },
+  { id: 'daffodil',   name: 'Daffodil',   bloomColors: ['#ffdd00','#ffffff','#ffaa22','#ffee88','#ff8844','#eeff44','#ffcc55','#ddff88','#ffbb66','#ffffaa'] },
+  { id: 'dahlia',     name: 'Dahlia',     bloomColors: ['#dd2255','#ff8844','#ffcc22','#cc44aa','#ff4466','#ee6688','#aa3388','#ff6622','#dd66cc','#ffaadd'] },
+  { id: 'hydrangea',  name: 'Hydrangea',  bloomColors: ['#6688cc','#cc6699','#88bbdd','#aa88cc','#ddaacc','#5599bb','#7766aa','#99ccdd','#bb88bb','#aaddee'] },
+  { id: 'peony',      name: 'Peony',      bloomColors: ['#ff88aa','#ffccdd','#ff5577','#ee99bb','#ffaacc','#dd6688','#ff77aa','#ffddee','#cc5588','#ffbbcc'] },
+  { id: 'daisy',      name: 'Daisy',      bloomColors: ['#ffffff','#ffaacc','#ccaaee','#fff8aa','#aaddff','#ffddcc','#ddffaa','#ffccee','#bbddff','#ffffcc'] },
+  { id: 'sunflower',  name: 'Sunflower',  bloomColors: ['#ffcc00','#ff9922','#fff44f','#cc3300','#fff8e0','#ff7733','#ffdd44','#eeaa00','#ffbb22','#ddcc00'] },
 ];
 
 const Plants = {
@@ -25,6 +27,7 @@ const Plants = {
       growthProgress: 1.0,  // start fully "arrived" in seed stage
       growthAnimating: false,
       plantedTime: Game.time,
+      colorIndex: Math.floor(Math.random() * 10), // random color variant 0-5
     };
     this.items.push(plant);
     return plant;
@@ -67,6 +70,12 @@ const Plants = {
     }
   },
 
+  // Remove a plant from the garden
+  removePlant(plant) {
+    const idx = this.items.indexOf(plant);
+    if (idx >= 0) this.items.splice(idx, 1);
+  },
+
   // Hit-test: find plant near screen coordinates
   // Returns plant or null. Checks all plants, returns closest to tap.
   findPlantAt(screenX, screenY) {
@@ -75,7 +84,7 @@ const Plants = {
     for (const plant of this.items) {
       const pos = Camera.worldToScreen(plant.angle, plant.depth);
       if (!pos.visible) continue;
-      const hitRadius = 80 * pos.scale;
+      const hitRadius = 200 * pos.scale;
       const dx = screenX - pos.x;
       const dy = screenY - (pos.y - hitRadius * 0.5); // center hitbox on plant body
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -103,7 +112,7 @@ const Plants = {
   drawPlant(ctx, plant, x, y, scale) {
     ctx.save();
     ctx.translate(x, y);
-    PlantRenderer.draw(ctx, plant.typeIndex, plant.growthStage, plant.growthProgress, scale, Game.time);
+    PlantRenderer.draw(ctx, plant.typeIndex, plant.growthStage, plant.growthProgress, scale, Game.time, plant.colorIndex);
     ctx.restore();
   },
 
@@ -118,7 +127,7 @@ const Plants = {
       const pos = Camera.worldToScreen(angle, depth);
       if (!pos.visible) continue;
       const pulse = 0.7 + Math.sin(time * 3 + i) * 0.3;
-      const radius = 15 * pos.scale * pulse;
+      const radius = 80 * pos.scale * pulse;
       ctx.save();
       ctx.globalAlpha = 0.15 + Math.sin(time * 2 + i * 0.7) * 0.1;
       ctx.fillStyle = '#aaffaa';
