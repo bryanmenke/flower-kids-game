@@ -118,8 +118,14 @@ const UI = {
         c.style.width = '71px';
         c.style.height = '71px';
         var cx = c.getContext('2d');
-        cx.translate(71, 120);
-        PlantRenderer.draw(cx, idx, 4, 1.0, 0.18, 0, 0);
+        // Clip to canvas so stem is hidden, only bloom visible
+        cx.save();
+        cx.beginPath();
+        cx.rect(0, 0, 142, 142);
+        cx.clip();
+        cx.translate(71, 135);
+        PlantRenderer.draw(cx, idx, 4, 1.0, 0.51, 0, 0);
+        cx.restore();
         btn.appendChild(c);
 
         btn.addEventListener('pointerdown', function(e) {
@@ -153,8 +159,8 @@ const UI = {
         c.style.width = '71px';
         c.style.height = '71px';
         var cx = c.getContext('2d');
-        cx.translate(71, 107);
-        def.draw(cx, 64, 0);
+        cx.translate(71, 120);
+        def.draw(cx, 109, 0);
         btn.appendChild(c);
 
         btn.addEventListener('pointerdown', function(e) {
@@ -183,8 +189,8 @@ const UI = {
       cx.beginPath();
       for (var j = 0; j < 5; j++) {
         var a = (j / 5) * Math.PI * 2 - Math.PI / 2;
-        var r = 36;
-        var ri = 16;
+        var r = 61;
+        var ri = 27;
         cx.lineTo(71 + Math.cos(a) * r, 71 + Math.sin(a) * r);
         var a2 = a + Math.PI / 5;
         cx.lineTo(71 + Math.cos(a2) * ri, 71 + Math.sin(a2) * ri);
@@ -213,7 +219,7 @@ const UI = {
       c.style.height = '71px';
       var cx = c.getContext('2d');
       cx.globalAlpha = 0.2;
-      this._drawPawPrint(cx, 71, 71, 36);
+      this._drawPawPrint(cx, 71, 71, 61);
       cx.globalAlpha = 1;
       hint.appendChild(c);
       tray.appendChild(hint);
@@ -234,10 +240,10 @@ const UI = {
       cx.lineWidth = 10;
       cx.lineCap = 'round';
       cx.beginPath();
-      cx.moveTo(42, 42);
-      cx.lineTo(100, 100);
-      cx.moveTo(100, 42);
-      cx.lineTo(42, 100);
+      cx.moveTo(32, 32);
+      cx.lineTo(110, 110);
+      cx.moveTo(110, 32);
+      cx.lineTo(32, 110);
       cx.stroke();
       removeBtn.appendChild(c);
 
@@ -269,7 +275,7 @@ const UI = {
         c.style.height = '71px';
         var cx = c.getContext('2d');
         cx.translate(71, 71);
-        AnimalRenderer.drawAccessory(cx, animal.typeIndex, accId, 100, 0);
+        AnimalRenderer.drawAccessory(cx, animal.typeIndex, accId, 170, 0);
         btn.appendChild(c);
 
         btn.addEventListener('pointerdown', function(e) {
@@ -296,9 +302,9 @@ const UI = {
     bx.lineCap = 'round';
     bx.lineJoin = 'round';
     bx.beginPath();
-    bx.moveTo(92, 42);
-    bx.lineTo(50, 71);
-    bx.lineTo(92, 100);
+    bx.moveTo(95, 32);
+    bx.lineTo(47, 71);
+    bx.lineTo(95, 110);
     bx.stroke();
     closeBtn.appendChild(bc);
 

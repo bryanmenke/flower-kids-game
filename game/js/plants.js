@@ -118,23 +118,6 @@ const Plants = {
 
   // Draw placement hints when a type is selected
   drawPlacementHints(ctx) {
-    if (this.selectedType < 0) return;
-    const time = Game.time;
-    // Show 8 pulsing circles on the ground surface
-    for (let i = 0; i < 8; i++) {
-      const angle = Camera.rotation + (i / 8 - 0.5) * Camera.visibleArc * 0.7;
-      const depth = 0.3 + (i % 3) * 0.2;
-      const pos = Camera.worldToScreen(angle, depth);
-      if (!pos.visible) continue;
-      const pulse = 0.7 + Math.sin(time * 3 + i) * 0.3;
-      const radius = 80 * pos.scale * pulse;
-      ctx.save();
-      ctx.globalAlpha = 0.15 + Math.sin(time * 2 + i * 0.7) * 0.1;
-      ctx.fillStyle = '#aaffaa';
-      ctx.beginPath();
-      ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
+    // Removed — pulsing circles were distracting
   },
 };

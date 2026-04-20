@@ -104,30 +104,6 @@ const PlanetSurface = {
     ctx.fillStyle = groundGrad;
     ctx.fillRect(0, horizonY - 15, w, groundBottom - horizonY + 15);
 
-    // --- Terrain patches (scroll with rotation) ---
-    for (const patch of this.terrainPatches) {
-      const worldAngle = patch.xOffset;
-      const relAngle = worldAngle - rotation;
-      const halfArc = Camera.visibleArc / 2;
-      let normAngle = relAngle;
-      while (normAngle > Math.PI) normAngle -= Math.PI * 2;
-      while (normAngle < -Math.PI) normAngle += Math.PI * 2;
-      if (Math.abs(normAngle) > halfArc + 0.3) continue;
-
-      const screenX = w / 2 + (normAngle / halfArc) * (w / 2);
-      const pos = Camera.worldToScreen(worldAngle, patch.depth);
-      const r = patch.radius * pos.scale;
-
-      ctx.beginPath();
-      ctx.arc(screenX, pos.y, r, 0, Math.PI * 2);
-      if (patch.darkness > 0) {
-        ctx.fillStyle = `rgba(0, 0, 0, ${Math.abs(patch.darkness)})`;
-      } else {
-        ctx.fillStyle = `rgba(100, 140, 60, ${Math.abs(patch.darkness)})`;
-      }
-      ctx.fill();
-    }
-
     // --- Soil texture (subtle stippling) ---
     ctx.globalAlpha = 0.03;
     for (let i = 0; i < 200; i++) {

@@ -86,9 +86,9 @@ const Particles = {
       life: 0.8 + Math.random() * 0.5,
       maxLife: 1.3,
       size: 1.5 + Math.random() * 2,
-      color,
+      color: '#ff88bb',
       gravity: -5,
-      alpha: 1,
+      alpha: 0.4,
       isStar: Math.random() < 0.3,
     });
   },

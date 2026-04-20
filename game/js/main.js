@@ -259,7 +259,13 @@ function drawPlaying(ctx) {
     }
   }
 
-  // (Ambient sparkle removed — too distracting)
+  // Ambient sparkle for bloomed plants
+  for (const item of plantList) {
+    if (item.plant.growthStage >= 4) {
+      const colors = PlantTypes[item.plant.typeIndex].bloomColors;
+      Particles.emitAmbient(item.x, item.y, colors[0]);
+    }
+  }
 }
 
 // --- Game Loop ---
