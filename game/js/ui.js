@@ -42,12 +42,12 @@ const UI = {
         if (self.activeTab === tab.id) btn.classList.add('active');
 
         var c = document.createElement('canvas');
-        c.width = 200;
-        c.height = 200;
-        c.style.width = '100px';
-        c.style.height = '100px';
+        c.width = 142;
+        c.height = 142;
+        c.style.width = '71px';
+        c.style.height = '71px';
         var cx = c.getContext('2d');
-        tab.drawIcon(cx, 100, 100);
+        tab.drawIcon(cx, 71, 71);
         btn.appendChild(c);
 
         btn.addEventListener('pointerdown', function(e) {
@@ -113,13 +113,13 @@ const UI = {
         if (Plants.selectedType === idx) btn.classList.add('selected');
 
         var c = document.createElement('canvas');
-        c.width = 200;
-        c.height = 200;
-        c.style.width = '100px';
-        c.style.height = '100px';
+        c.width = 142;
+        c.height = 142;
+        c.style.width = '71px';
+        c.style.height = '71px';
         var cx = c.getContext('2d');
-        cx.translate(100, 168);
-        PlantRenderer.draw(cx, idx, 4, 1.0, 0.24, 0, 0);
+        cx.translate(71, 120);
+        PlantRenderer.draw(cx, idx, 4, 1.0, 0.18, 0, 0);
         btn.appendChild(c);
 
         btn.addEventListener('pointerdown', function(e) {
@@ -148,13 +148,13 @@ const UI = {
         if (self.selectedDecoration === decoId) btn.classList.add('selected');
 
         var c = document.createElement('canvas');
-        c.width = 200;
-        c.height = 200;
-        c.style.width = '100px';
-        c.style.height = '100px';
+        c.width = 142;
+        c.height = 142;
+        c.style.width = '71px';
+        c.style.height = '71px';
         var cx = c.getContext('2d');
-        cx.translate(100, 150);
-        def.draw(cx, 90, 0);
+        cx.translate(71, 107);
+        def.draw(cx, 64, 0);
         btn.appendChild(c);
 
         btn.addEventListener('pointerdown', function(e) {
@@ -172,10 +172,10 @@ const UI = {
       var empty = document.createElement('div');
       empty.className = 'tray-item tray-empty';
       var c = document.createElement('canvas');
-      c.width = 200;
-      c.height = 200;
-      c.style.width = '100px';
-      c.style.height = '100px';
+      c.width = 142;
+      c.height = 142;
+      c.style.width = '71px';
+      c.style.height = '71px';
       var cx = c.getContext('2d');
       // Draw a faded gift star icon to hint "earn rewards"
       cx.globalAlpha = 0.2;
@@ -183,11 +183,11 @@ const UI = {
       cx.beginPath();
       for (var j = 0; j < 5; j++) {
         var a = (j / 5) * Math.PI * 2 - Math.PI / 2;
-        var r = 50;
-        var ri = 22;
-        cx.lineTo(100 + Math.cos(a) * r, 100 + Math.sin(a) * r);
+        var r = 36;
+        var ri = 16;
+        cx.lineTo(71 + Math.cos(a) * r, 71 + Math.sin(a) * r);
         var a2 = a + Math.PI / 5;
-        cx.lineTo(100 + Math.cos(a2) * ri, 100 + Math.sin(a2) * ri);
+        cx.lineTo(71 + Math.cos(a2) * ri, 71 + Math.sin(a2) * ri);
       }
       cx.closePath();
       cx.fill();
@@ -207,13 +207,13 @@ const UI = {
       var hint = document.createElement('div');
       hint.className = 'tray-item tray-empty';
       var c = document.createElement('canvas');
-      c.width = 200;
-      c.height = 200;
-      c.style.width = '100px';
-      c.style.height = '100px';
+      c.width = 142;
+      c.height = 142;
+      c.style.width = '71px';
+      c.style.height = '71px';
       var cx = c.getContext('2d');
       cx.globalAlpha = 0.2;
-      this._drawPawPrint(cx, 100, 100, 50);
+      this._drawPawPrint(cx, 71, 71, 36);
       cx.globalAlpha = 1;
       hint.appendChild(c);
       tray.appendChild(hint);
@@ -225,19 +225,19 @@ const UI = {
       var removeBtn = document.createElement('div');
       removeBtn.className = 'tray-item tray-remove';
       var c = document.createElement('canvas');
-      c.width = 200;
-      c.height = 200;
-      c.style.width = '100px';
-      c.style.height = '100px';
+      c.width = 142;
+      c.height = 142;
+      c.style.width = '71px';
+      c.style.height = '71px';
       var cx = c.getContext('2d');
       cx.strokeStyle = '#ff6666';
-      cx.lineWidth = 12;
+      cx.lineWidth = 10;
       cx.lineCap = 'round';
       cx.beginPath();
-      cx.moveTo(60, 60);
-      cx.lineTo(140, 140);
-      cx.moveTo(140, 60);
-      cx.lineTo(60, 140);
+      cx.moveTo(42, 42);
+      cx.lineTo(100, 100);
+      cx.moveTo(100, 42);
+      cx.lineTo(42, 100);
       cx.stroke();
       removeBtn.appendChild(c);
 
@@ -263,13 +263,13 @@ const UI = {
         if (animal.accessory === accId) btn.classList.add('selected');
 
         var c = document.createElement('canvas');
-        c.width = 200;
-        c.height = 200;
-        c.style.width = '100px';
-        c.style.height = '100px';
+        c.width = 142;
+        c.height = 142;
+        c.style.width = '71px';
+        c.style.height = '71px';
         var cx = c.getContext('2d');
-        cx.translate(100, 100);
-        AnimalRenderer.drawAccessory(cx, animal.typeIndex, accId, 140, 0);
+        cx.translate(71, 71);
+        AnimalRenderer.drawAccessory(cx, animal.typeIndex, accId, 100, 0);
         btn.appendChild(c);
 
         btn.addEventListener('pointerdown', function(e) {
@@ -285,20 +285,20 @@ const UI = {
     var closeBtn = document.createElement('div');
     closeBtn.className = 'tray-item tray-back';
     var bc = document.createElement('canvas');
-    bc.width = 200;
-    bc.height = 200;
-    bc.style.width = '100px';
-    bc.style.height = '100px';
+    bc.width = 142;
+    bc.height = 142;
+    bc.style.width = '71px';
+    bc.style.height = '71px';
     var bx = bc.getContext('2d');
     // Draw a left-pointing arrow
     bx.strokeStyle = '#aaaaaa';
-    bx.lineWidth = 14;
+    bx.lineWidth = 12;
     bx.lineCap = 'round';
     bx.lineJoin = 'round';
     bx.beginPath();
-    bx.moveTo(130, 60);
-    bx.lineTo(70, 100);
-    bx.lineTo(130, 140);
+    bx.moveTo(92, 42);
+    bx.lineTo(50, 71);
+    bx.lineTo(92, 100);
     bx.stroke();
     closeBtn.appendChild(bc);
 
